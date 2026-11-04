@@ -57,8 +57,9 @@ Every result also carries `reason` (machine code), `details` (plain English) and
 │   │   └── worker.js        worker entry
 │   ├── test/                node:test suites (no DB needed)
 │   └── .env.example         every setting, documented
-├── docker-compose.yml       MongoDB + Redis
-├── ecosystem.config.js      PM2 for production
+├── docker-compose.yml       MongoDB + Redis for local development
+├── docker-compose.prod.yml  Production: api + worker + MongoDB + Redis
+├── Dockerfile               Builds the website + server into one image
 └── SETUP.md                 step-by-step setup guide
 ```
 
@@ -72,7 +73,8 @@ Every result also carries `reason` (machine code), `details` (plain English) and
 | `npm run doctor -- a@b.com`     | …and verify one real address end to end                  |
 | `npm test`                      | Run the server test suite                                 |
 | `npm run build`                 | Build the React app into `client/dist`                    |
-| `npm start` / `npm run worker`  | Production API / worker                                   |
+| `npm start` / `npm run worker`  | Run API / worker without Docker                           |
+| `docker compose -f docker-compose.prod.yml up -d --build` | Production deploy (see SETUP.md Part 2) |
 
 ## API
 

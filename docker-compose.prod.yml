@@ -1,0 +1,59 @@
+# Production: the whole app in Docker.
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Settings come from server/.env. MONGO_URI / REDIS_URL are set here so the
+# containers find each other. Only the API is reachable, and only from this
+# server (127.0.0.1), so Nginx in front of it handles HTTPS.
+
+x-app: &app
+  build: .
+  image: mailguard:latest
+  restart: unless-stopped
+  env_file: server/.env
+  environment:
+    NODE_ENV: production
+    SERVE_CLIENT: "true"
+    RUN_WORKER: "false"
+    PORT: "5000"
+    MONGO_URI: mongodb://mongo:27017/mailguard
+    REDIS_URL: redis://redis:6379
+  depends_on:
+    mongo: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  volumes:
+    - app_logs:/app/server/logs
+
+services:
+  api:
+    <<: *app
+    ports: ["127.0.0.1:5000:5000"]
+
+  worker:
+    <<: *app
+    command: ["node", "src/worker.js"]
+    healthcheck: { disable: true }
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo_data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data:
+  redis_data:
+  app_logs:

@@ -1,0 +1,6 @@
+**/node_modules
+**/.env
+**/logs
+client/dist
+.git
+*.zip

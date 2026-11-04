@@ -5,7 +5,7 @@ ZeroBounce, Emailable, Kickbox, Hunter, Reacher). You don't need port 25 or any 
 setup: the API provider does the mailbox check on their side.
 
 - **Part 1 — Run it on your computer** (about 20 minutes).
-- **Part 2 — Put it on a server** so others can use it.
+- **Part 2 — Deploy on a VPS** with Docker so others can use it.
 
 Do **Part 0** first no matter what.
 
@@ -147,130 +147,254 @@ All tests should pass. They don't need MongoDB, Redis or internet.
 
 ---
 
-## Part 2 — Put it on a server
+## Part 2 — Deploy on a VPS (Docker)
 
-Any small Linux VPS works (1 CPU / 1–2 GB RAM is plenty to start). Example
-below uses Ubuntu 22.04/24.04 and the domain `app.yourdomain.com`.
+### What runs where
 
-### 2.1 DNS
+Everything runs on **one VPS**, under **one domain**, inside Docker. You do
+**not** deploy the frontend and backend separately. The React site is built
+into the same image and served by the API.
 
-At your domain registrar or Cloudflare, add an **A record**: `app` → your server's IP.
-
-### 2.2 Prepare the server
-
-```bash
-sudo apt update && sudo apt upgrade -y
-# Node.js 20 LTS
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs nginx
-# Docker (runs MongoDB + Redis)
-curl -fsSL https://get.docker.com | sudo sh
-# PM2 keeps the app running and restarts it after reboots
-sudo npm install -g pm2
+```
+                 Internet
+                    │  https://app.yourdomain.com
+              ┌─────▼─────┐
+              │   Nginx    │  HTTPS certificate (on the VPS itself)
+              └─────┬─────┘
+                    │ 127.0.0.1:5000
+ ┌──────────────────▼──────── Docker ─────────────────────┐
+ │  api      → website + REST API     ┐  same image       │
+ │  worker   → processes bulk lists   ┘  (mailguard)      │
+ │  mongo    → database (data kept in a Docker volume)    │
+ │  redis    → job queue + cache                          │
+ └────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 Upload and install
+MongoDB and Redis are **not reachable from the internet**. Only the app talks
+to them, inside Docker.
 
-Upload the project (Git, SFTP or `scp`) to e.g. `/var/www/mailguard`, then:
+> **Already running Coolify on this VPS?** Coolify uses ports 80/443 itself,
+> so skip Nginx (steps 2.6–2.7) and follow **2.10** instead.
+
+### 2.1 Point your domain at the VPS
+
+At your domain registrar or Cloudflare, add an **A record**:
+`app` → your VPS IP (shown in your hosting panel).
+
+Wait a few minutes, then check from your PC: `ping app.yourdomain.com` should
+show the VPS IP.
+
+### 2.2 Log in to the VPS
+
+From PowerShell on your PC:
 
 ```bash
-cd /var/www/mailguard
-npm run install:all
-docker compose up -d
+ssh root@YOUR_VPS_IP
+```
+
+### 2.3 Install Docker, Nginx and Certbot
+
+```bash
+apt update && apt upgrade -y
+curl -fsSL https://get.docker.com | sh
+apt install -y nginx certbot python3-certbot-nginx unzip
+docker --version && docker compose version
+```
+
+(If you picked an Ubuntu template that already has Docker, `get.docker.com`
+just confirms it.)
+
+### 2.4 Upload the project
+
+**Option A — from your PC with `scp`** (run in PowerShell on your PC, in the
+folder that contains the zip):
+
+```bash
+scp mailguard-v2.3.zip root@YOUR_VPS_IP:/opt/
+```
+
+Then on the VPS:
+
+```bash
+cd /opt && unzip mailguard-v2.3.zip && mv email-verification-saas mailguard && cd mailguard
+```
+
+**Option B — Git:** push the project to a **private** repo and `git clone` it
+into `/opt/mailguard`. `.gitignore` already keeps `.env` out of Git.
+
+### 2.5 Create the production settings
+
+```bash
+cd /opt/mailguard
 cp server/.env.example server/.env
 nano server/.env
 ```
 
-### 2.4 Production `.env`
+Fill in (paste with right-click in most SSH windows; save with Ctrl+O, Enter, Ctrl+X):
 
 ```env
-NODE_ENV=production
-PORT=5000
 CLIENT_URL=https://app.yourdomain.com
-SERVE_CLIENT=true
 TRUST_PROXY=1
 
-JWT_SECRET=<new 96-character secret from step 1.4>
+JWT_SECRET=<NEW secret: run the command below and paste the result>
 
-# Needed in production so users receive sign-up codes and reset links
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USER=you@yourdomain.com
-MAIL_PASS=<app password>
-MAIL_FROM_EMAIL=you@yourdomain.com
+MAIL_USER=<same as on your PC>
+MAIL_PASS=<same app password as on your PC>
+MAIL_FROM_EMAIL=<same as MAIL_USER>
 MAIL_FROM_NAME=MailGuard
 
-# Mailbox-check APIs, tried in order (add more as fallbacks for when credits run out)
 VERIFY_PROVIDERS=reoon
-REOON_API_KEY=<key>
+REOON_API_KEY=<your key>
 REOON_MODE=power
 ```
 
-### 2.5 Build and start
+Make a new secret for the server (don't reuse your PC's):
 
 ```bash
-npm run build                      # builds the website into client/dist
-npm run doctor                     # everything should be ✔
-npm run doctor -- you@gmail.com    # real end-to-end test (uses 1 API credit)
-pm2 start ecosystem.config.js      # starts API + worker
-pm2 save && pm2 startup            # survive reboots (run the command it prints)
+openssl rand -hex 48
 ```
 
-### 2.6 Nginx + HTTPS
+You **don't** need to set `MONGO_URI`, `REDIS_URL`, `NODE_ENV`, `PORT` or
+`SERVE_CLIENT`. `docker-compose.prod.yml` sets those for the containers.
 
-`/etc/nginx/sites-available/mailguard`:
+Lock the file so only root can read it:
+
+```bash
+chmod 600 server/.env
+```
+
+### 2.6 Start everything
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The first build takes a few minutes. Then check:
+
+```bash
+docker compose -f docker-compose.prod.yml ps        # all 4 services "running" / "healthy"
+curl http://127.0.0.1:5000/health                    # {"status":"ok",...}
+docker compose -f docker-compose.prod.yml exec api node src/scripts/doctor.js
+```
+
+Doctor should say **All good**. To check one real address (uses 1 Reoon credit):
+
+```bash
+docker compose -f docker-compose.prod.yml exec api node src/scripts/doctor.js you@gmail.com
+```
+
+### 2.7 Nginx + free HTTPS
+
+```bash
+nano /etc/nginx/sites-available/mailguard
+```
+
+Paste (replace the domain):
 
 ```nginx
 server {
+    listen 80;
     server_name app.yourdomain.com;
     client_max_body_size 25m;          # allow 20 MB CSV uploads
 
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 120s;
+        proxy_read_timeout 120s;       # single checks can take a while
     }
 }
 ```
 
-```bash
-sudo ln -s /etc/nginx/sites-available/mailguard /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d app.yourdomain.com
-```
-
-Open **https://app.yourdomain.com**, sign up, and check **Settings → System
-status**: everything should say OK.
-
-### 2.7 Firewall
-
-Only web traffic and SSH should be reachable from outside. MongoDB and Redis
-are already bound to `127.0.0.1` by `docker-compose.yml`.
+Enable it and get the certificate:
 
 ```bash
-sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
+ln -s /etc/nginx/sites-available/mailguard /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
+certbot --nginx -d app.yourdomain.com
 ```
 
-### 2.8 Updating later
+Certbot asks for your email and sets up auto-renewal. Open
+**https://app.yourdomain.com**, register, and the code should arrive by email.
+Then check **Settings → System status**: everything should be OK.
+
+### 2.8 Firewall
 
 ```bash
-cd /var/www/mailguard && git pull     # or upload the new files
-npm run install:all && npm run build
-pm2 restart all
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw enable
 ```
 
-### 2.9 Making API credits last
+If your hosting panel also has a firewall, allow ports **22, 80, 443** there
+too.
 
-- Every result is cached for 72 hours (`VERIFY_CACHE_TTL_HOURS`), so the same
-  address checked twice costs one API call.
+### 2.9 Day-to-day commands
+
+Run these inside `/opt/mailguard`. Tip: `alias dc='docker compose -f docker-compose.prod.yml'`
+saves typing.
+
+| Task | Command |
+|---|---|
+| See status | `docker compose -f docker-compose.prod.yml ps` |
+| Live logs | `docker compose -f docker-compose.prod.yml logs -f api worker` |
+| Restart after editing `.env` | `docker compose -f docker-compose.prod.yml up -d` |
+| Deploy a new version | upload/`git pull`, then `docker compose -f docker-compose.prod.yml up -d --build` |
+| Stop everything | `docker compose -f docker-compose.prod.yml down` (data is kept) |
+| Add credits to a user | `docker compose -f docker-compose.prod.yml exec mongo mongosh mailguard --eval 'db.users.updateOne({email:"you@x.com"},{$inc:{credits:1000}})'` |
+
+⚠️ Never run `down -v`. The `-v` deletes the database volume.
+
+**Backups** (daily at 3 am, keeps 14 days):
+
+```bash
+mkdir -p /opt/backups
+crontab -e
+```
+
+Add this line:
+
+```
+0 3 * * * cd /opt/mailguard && docker compose -f docker-compose.prod.yml exec -T mongo mongodump --archive --gzip --db mailguard > /opt/backups/mailguard-$(date +\%F).gz && find /opt/backups -name 'mailguard-*.gz' -mtime +14 -delete
+```
+
+Restore a backup:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T mongo mongorestore --archive --gzip --drop < /opt/backups/mailguard-YYYY-MM-DD.gz
+```
+
+Copy backups off the server now and then (e.g. `scp` them to your PC).
+
+### 2.10 Alternative: the VPS already runs Coolify
+
+Coolify has its own proxy on ports 80/443, so don't install Nginx.
+
+1. Push the project to a private Git repo and connect it in Coolify.
+2. Add a new resource using the **Docker Compose** build pack and point it at
+   `docker-compose.prod.yml`.
+3. Delete the `ports:` line under `api` (Coolify routes traffic itself) and
+   set your domain on the **api** service, port **5000**.
+4. Put the variables from step 2.5 in Coolify's environment variables screen,
+   or keep `server/.env` on the server.
+5. Deploy, then run doctor from Coolify's terminal for the `api` container:
+   `node src/scripts/doctor.js`.
+
+Coolify's menus change between versions, so match these steps to what you see.
+
+### 2.11 Making API credits last
+
+- Every definite result is cached for 72 hours (`VERIFY_CACHE_TTL_HOURS`).
 - Bad formats, non-existent domains, domains with no mail server and
-  disposable inboxes are caught **before** the API is called, so they cost no
-  API credits.
-- List several APIs in `VERIFY_PROVIDERS`. When one runs out of credits it is
-  paused for an hour and the next one is used automatically.
+  disposable inboxes are caught **before** Reoon is called, so they cost
+  nothing.
+- Add a backup provider (`VERIFY_PROVIDERS=reoon,zerobounce`). When one runs
+  out of credits it is paused for an hour and the next is used.
 
 ---
 
@@ -303,15 +427,17 @@ You can point the new version at your **existing** MongoDB database.
 | You see | Cause | Fix |
 |---|---|---|
 | Banner: "No mailbox checker is configured" | `VERIFY_PROVIDERS` lists checkers without keys/settings | Fill the matching variables, run `npm run doctor`, restart |
-| Banner: "worker is not running" / bulk stuck at 0% | Worker process not started | Dev: use `npm run dev`. Prod: `pm2 status`, `pm2 logs mailguard-worker` |
+| Banner: "worker is not running" / bulk stuck at 0% | Worker not started | Dev: use `npm run dev`. Prod: `docker compose -f docker-compose.prod.yml logs worker` |
 | doctor: `reoon: balance check failed` | Wrong key, or key not active yet | Copy the key again from emailverifier.reoon.com → API, restart |
 | Many `unknown` with "Checker API key rejected" | Wrong or expired API key | Copy the key again from the provider's dashboard, restart |
 | Many `unknown` with "Checker out of credits" | Free tier used up | Wait for the reset, add another provider to `VERIFY_PROVIDERS`, or upgrade |
 | `unknown` with "DNS lookup failed" | The machine's DNS is broken or blocked | Linux: set `nameserver 1.1.1.1` in `/etc/resolv.conf`. Office PC: ask IT, or try another network |
 | Sign-up code email never arrives | `MAIL_*` wrong | `npm run doctor` shows the SMTP login error |
-| `Not enough credits` | Balance too low | In `mongosh`: `db.users.updateOne({email:'you@x.com'},{$inc:{credits:1000}})` |
+| `Not enough credits` | Balance too low | See "Add credits to a user" in 2.9 |
 
 **About accuracy:** no checker, free or paid, can confirm every mailbox.
 Catch-all domains accept everything by design, and some providers hide whether
 an inbox exists. MailGuard reports those honestly as `catch-all` / `unknown`
 instead of guessing.
+| `502 Bad Gateway` from Nginx | App container not running | `docker compose -f docker-compose.prod.yml ps`, then `logs api` |
+| Build fails: "no space left on device" | Old images filling the disk | `docker system prune` (keeps volumes/data) |
