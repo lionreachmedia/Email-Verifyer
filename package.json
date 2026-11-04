@@ -1,0 +1,18 @@
+{
+  "name": "mailguard",
+  "version": "2.0.0",
+  "private": true,
+  "description": "MailGuard — email verification SaaS (React + Node + MongoDB + Redis)",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n api,worker,web -c blue,magenta,green \"npm --prefix server run dev\" \"npm --prefix server run dev:worker\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "worker": "npm --prefix server run worker",
+    "doctor": "npm --prefix server run doctor --",
+    "test": "npm --prefix server test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
