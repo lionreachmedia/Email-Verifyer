@@ -371,21 +371,104 @@ docker compose -f docker-compose.prod.yml exec -T mongo mongorestore --archive -
 
 Copy backups off the server now and then (e.g. `scp` them to your PC).
 
-### 2.10 Alternative: the VPS already runs Coolify
+### 2.10 Alternative: Coolify with 5 separate services (Docker)
 
-Coolify has its own proxy on ports 80/443, so don't install Nginx.
+Use this if your VPS runs Coolify and you prefer one service per part.
+Each app service is built from its own Dockerfile, so Nixpacks isn't needed.
 
-1. Push the project to a private Git repo and connect it in Coolify.
-2. Add a new resource using the **Docker Compose** build pack and point it at
-   `docker-compose.prod.yml`.
-3. Delete the `ports:` line under `api` (Coolify routes traffic itself) and
-   set your domain on the **api** service, port **5000**.
-4. Put the variables from step 2.5 in Coolify's environment variables screen,
-   or keep `server/.env` on the server.
-5. Deploy, then run doctor from Coolify's terminal for the `api` container:
-   `node src/scripts/doctor.js`.
+**Before you start:** push the project to a **private GitHub repo**, and add two
+DNS A records: `app.yourdomain.com` and `api.yourdomain.com` → VPS IP. Then
+open (or create) a Coolify project, e.g. `MailGuard` → production.
 
-Coolify's menus change between versions, so match these steps to what you see.
+**1. MongoDB:** **+ New → Databases → MongoDB → Start.** Copy the
+*internal* URL and use it in this form (add the database name and
+`authSource=admin`):
+`mongodb://root:PASSWORD@HOST:27017/mailguard?authSource=admin&directConnection=true`
+
+**2. Redis:** **+ New → Databases → Redis → Start.** Copy the
+*internal* URL, e.g. `redis://default:PASSWORD@HOST:6379/0`.
+
+**3. Backend:** **+ New → Private Repository**, pick the repo, Build Pack **Dockerfile**.
+
+| Setting | Value |
+|---|---|
+| Base Directory | `/server` |
+| Dockerfile Location | `/Dockerfile` |
+| Ports Exposes | `5000` |
+| Domains | `https://api.yourdomain.com` |
+
+Environment variables (Developer view, paste and fill in):
+
+```env
+NODE_ENV=production
+PORT=5000
+MONGO_URI=<MongoDB internal URL from step 1>
+REDIS_URL=<Redis internal URL from step 2>
+JWT_SECRET=<openssl rand -hex 48>
+CLIENT_URL=https://app.yourdomain.com
+SERVE_CLIENT=false
+TRUST_PROXY=1
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=...
+MAIL_PASS=...
+MAIL_FROM_EMAIL=...
+MAIL_FROM_NAME=MailGuard
+VERIFY_PROVIDERS=reoon
+REOON_API_KEY=...
+REOON_MODE=power
+```
+
+Deploy. Check that `https://api.yourdomain.com/health` shows `{"status":"ok"}`.
+
+**4. Worker:** **+ New → Private Repository**, same repo, Build Pack **Dockerfile**.
+
+| Setting | Value |
+|---|---|
+| Base Directory | `/server` |
+| Dockerfile Location | `/Dockerfile.worker` |
+| Ports Exposes | `5000` (required field; nothing listens on it) |
+| Domains | *(empty)* |
+| Health check | **off** |
+
+Environment variables: **the same block as the backend**. Deploy. The worker's
+logs should show `[worker] listening on "email-verification"`.
+
+**5. Frontend:** **+ New → Private Repository**, same repo, Build Pack **Dockerfile**.
+
+| Setting | Value |
+|---|---|
+| Base Directory | `/client` |
+| Dockerfile Location | `/Dockerfile` |
+| Ports Exposes | `80` |
+| Domains | `https://app.yourdomain.com` |
+
+Environment variable (tick **Build Variable**, because it's baked into the
+website when it's built):
+
+```env
+VITE_API_URL=https://api.yourdomain.com/api
+```
+
+Deploy. The build log shows `Building with VITE_API_URL=…`. If it shows
+`/api` instead, the Build Variable tick is missing: fix it and redeploy.
+
+**Check:** backend → **Terminal** → `node src/scripts/doctor.js` should be
+**All good** (including "worker is running"). Then open
+`https://app.yourdomain.com` and sign up.
+
+**Updating:** push to GitHub, then **Redeploy** backend, worker and frontend
+(or turn on automatic deployments).
+
+| Problem | Fix |
+|---|---|
+| Website loads but sign-in says network error | `VITE_API_URL` wrong or not a Build Variable → fix, redeploy frontend |
+| CORS error in the browser console | Backend `CLIENT_URL` must be exactly `https://app.yourdomain.com` (no trailing `/`) |
+| Backend log: `Authentication failed` | Add `authSource=admin` to `MONGO_URI` |
+| Bulk stuck at 0% | Worker not running or missing env vars → check its logs |
+
+Coolify's menus vary a little between versions. Match these settings to what
+you see.
 
 ### 2.11 Making API credits last
 

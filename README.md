@@ -59,7 +59,10 @@ Every result also carries `reason` (machine code), `details` (plain English) and
 │   └── .env.example         every setting, documented
 ├── docker-compose.yml       MongoDB + Redis for local development
 ├── docker-compose.prod.yml  Production: api + worker + MongoDB + Redis
-├── Dockerfile               Builds the website + server into one image
+├── Dockerfile               One image: website + server (for docker-compose.prod.yml)
+├── server/Dockerfile        Backend only  ┐ for separate services
+├── server/Dockerfile.worker Worker only   │ (e.g. Coolify, SETUP.md 2.10)
+├── client/Dockerfile        Website (Nginx) ┘
 └── SETUP.md                 step-by-step setup guide
 ```
 

@@ -26,7 +26,9 @@ export default function Settings() {
     try { await accountService.revokeApiKey(); setNewKey(null); refreshUser(); toast.success('API key revoked'); } catch (err) { toast.error(errorMessage(err)); }
   };
 
-  const apiBase = `${window.location.origin}/api`;
+  // Separate API domain (VITE_API_URL) or same domain (/api).
+  const configured = import.meta.env.VITE_API_URL;
+  const apiBase = configured && /^https?:\/\//.test(configured) ? configured.replace(/\/+$/, '') : `${window.location.origin}/api`;
 
   return (
     <div className="p-8 max-w-3xl space-y-6">

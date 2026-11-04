@@ -1,0 +1,11 @@
+# Background worker image (bulk lists).  Coolify: Base Directory = /server, Dockerfile = /Dockerfile.worker
+# Same code as the API, different start command, no web port.
+FROM node:20-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY . .
+RUN mkdir -p logs && chown -R node:node /app
+USER node
+CMD ["node", "src/worker.js"]
