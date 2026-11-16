@@ -1,10 +1,10 @@
 /** Emailable — free credits on signup. https://emailable.com */
 const { env } = require('../../../config/env');
-const { requestJson, httpFailure, short } = require('./http');
+const { requestJson, httpFailure, short, score100 } = require('./http');
 
 function map(d) {
   const raw = short({ state: d.state, reason: d.reason, accept_all: d.accept_all });
-  const extra = { raw, suggestion: d.did_you_mean || null, catchAll: typeof d.accept_all === 'boolean' ? d.accept_all : null };
+  const extra = { raw, score: score100(d.score), suggestion: d.did_you_mean || null, catchAll: typeof d.accept_all === 'boolean' ? d.accept_all : null };
   if (d.accept_all && d.state !== 'undeliverable') return { ...extra, verdict: 'catch_all', reason: 'accept_all', details: 'Emailable: the domain accepts any address.' };
   switch (d.state) {
     case 'deliverable': return { ...extra, verdict: 'deliverable', reason: 'mailbox_exists', details: 'Emailable confirmed the mailbox exists.' };

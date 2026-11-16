@@ -72,7 +72,14 @@ function build(email, la, fields, startedAt) {
     cached: false,
     durationMs: Date.now() - startedAt,
   };
-  out.confidence = confidenceFor(status, out.reason, out);
+  // Prefer the checker's own score; fall back to MailGuard's estimate.
+  if (status !== 'unknown' && Number.isInteger(fields.score)) {
+    out.confidence = fields.score;
+    out.scoreSource = out.provider;
+  } else {
+    out.confidence = confidenceFor(status, out.reason, out);
+    out.scoreSource = out.confidence === null ? null : 'mailguard';
+  }
   return out;
 }
 
@@ -98,7 +105,7 @@ async function verifyEmail(rawEmail, opts = {}) {
   }
 
   // 2. Cache
-  const cacheKey = `result:${email}`;
+  const cacheKey = `result:v2:${email}`;
   if (!opts.skipCache) {
     const hit = await cache.get(cacheKey);
     if (hit) return { ...hit, cached: true, durationMs: Date.now() - startedAt };
@@ -162,6 +169,7 @@ async function verifyEmail(rawEmail, opts = {}) {
         suggestion: r.suggestion,
         provider: provider.name,
         providerResponse: r.raw || null,
+        score: r.score,
       }, startedAt);
       await cache.set(cacheKey, res, env.verify.cacheTtlHours * 3600);
       return res;

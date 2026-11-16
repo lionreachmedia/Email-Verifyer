@@ -34,6 +34,12 @@ function httpFailure(name, res) {
   return { verdict: 'unknown', reason: 'provider_error', providerError: true, details: `${name}: request failed (${msg}).` };
 }
 
+// Provider score → 0-100 number, or null when missing/invalid.
+const score100 = (v, scale = 1) => {
+  const n = Number(v) * scale;
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.round(n) : null;
+};
+
 const short = (obj) => { try { return JSON.stringify(obj).slice(0, 500); } catch { return null; } };
 
-module.exports = { requestJson, httpFailure, short };
+module.exports = { requestJson, httpFailure, short, score100 };

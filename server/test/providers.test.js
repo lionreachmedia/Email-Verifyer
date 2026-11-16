@@ -34,3 +34,10 @@ test('provider HTTP failures become "unknown", never "invalid"', async () => {
   assert.equal(httpFailure('X', { status: 429, data: {} }).reason, 'provider_quota');
   assert.equal(httpFailure('X', { status: 0, error: 'timeout' }).verdict, 'unknown');
 });
+
+test('provider scores normalised to 0-100', () => {
+  assert.equal(P.kickbox.map({ result: 'deliverable', sendex: 0.87 }).score, 87);
+  assert.equal(P.emailable.map({ state: 'deliverable', score: 92 }).score, 92);
+  assert.equal(P.hunter.map({ status: 'valid', score: 95 }).score, 95);
+  assert.equal(P.zerobounce.map({ status: 'valid' }).score, undefined);
+});

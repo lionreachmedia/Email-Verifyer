@@ -80,7 +80,11 @@ export default function SingleVerify() {
               <span className="text-base font-medium text-ink break-all">{result.email}</span>
               <div className="ml-auto text-right">
                 <div className="text-[28px] leading-none font-semibold" style={{ color: confColor }}>{conf == null ? '—' : `${conf}%`}</div>
-                <div className="text-xs text-muted mt-1">Deliverability score</div>
+                <div className="text-xs text-muted mt-1">
+                  {result.scoreSource && result.scoreSource !== 'mailguard'
+                    ? `Score from ${PROVIDER_NAMES[result.scoreSource] || result.scoreSource}`
+                    : 'Deliverability score'}
+                </div>
               </div>
             </div>
 

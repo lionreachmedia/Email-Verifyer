@@ -90,3 +90,18 @@ test('DNS failure reports domain/MX as unknown, not "No"', async () => {
   const r = await verifyEmail(uniq(), { lookupMail: async () => ({ state: 'error', hosts: [], error: 'ETIMEOUT' }) });
   assert.equal(r.domainExists, null); assert.equal(r.mxFound, null);
 });
+
+test("checker's own score wins over MailGuard's estimate (Reoon 98, catch-all unknown)", async () => {
+  const r = await verifyEmail(uniq(), { lookupMail: okDns, providers: [stub('reoon', { verdict: 'deliverable', reason: 'mailbox_exists', score: 98, catchAll: null })] });
+  assert.equal(r.confidence, 98); assert.equal(r.scoreSource, 'reoon');
+});
+
+test('falls back to MailGuard estimate when the checker gives no score', async () => {
+  const r = await verifyEmail(uniq(), { lookupMail: okDns, providers: [stub('zerobounce', { verdict: 'deliverable', reason: 'mailbox_exists', catchAll: null })] });
+  assert.equal(r.confidence, 90); assert.equal(r.scoreSource, 'mailguard');
+});
+
+test('unknown results never carry a score, even if the checker sent one', async () => {
+  const r = await verifyEmail(uniq(), { lookupMail: okDns, providers: [stub('reoon', { verdict: 'unknown', reason: 'provider_unknown', score: 40 })] });
+  assert.equal(r.confidence, null);
+});

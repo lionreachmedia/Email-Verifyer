@@ -1,10 +1,10 @@
 /** Hunter — free plan includes monthly verifications. https://hunter.io */
 const { env } = require('../../../config/env');
-const { requestJson, httpFailure, short } = require('./http');
+const { requestJson, httpFailure, short, score100 } = require('./http');
 
 function map(d) {
   const raw = short({ status: d.status, result: d.result, score: d.score, accept_all: d.accept_all });
-  const extra = { raw, catchAll: typeof d.accept_all === 'boolean' ? d.accept_all : null };
+  const extra = { raw, score: score100(d.score), catchAll: typeof d.accept_all === 'boolean' ? d.accept_all : null };
   switch (d.status) {
     case 'valid': return { ...extra, verdict: 'deliverable', reason: 'mailbox_exists', details: 'Hunter confirmed the mailbox exists.' };
     case 'invalid': return { ...extra, verdict: 'undeliverable', reason: 'mailbox_not_found', details: 'Hunter: the mailbox does not exist.' };

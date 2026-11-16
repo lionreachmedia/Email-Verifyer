@@ -11,6 +11,7 @@ const verificationSchema = new mongoose.Schema({
   reason: { type: String, required: true },       // machine code, e.g. mailbox_not_found
   details: { type: String, default: '' },         // human explanation
   confidence: { type: Number, min: 0, max: 100, default: 0 },
+  scoreSource: { type: String, default: null }, // e.g. 'reoon', or 'mailguard' for our own estimate
 
   syntaxValid: { type: Boolean, default: false },
   domainExists: { type: Boolean, default: false }, // null = couldn't tell (DNS failure)

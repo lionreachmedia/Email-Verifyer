@@ -8,7 +8,7 @@
  *   GET https://emailverifier.reoon.com/api/v1/verify?email=…&key=…&mode=power
  */
 const { env } = require('../../../config/env');
-const { requestJson, httpFailure, short } = require('./http');
+const { requestJson, httpFailure, short, score100 } = require('./http');
 
 // REOON_BASE_URL is only for tests; leave it unset.
 const BASE = (process.env.REOON_BASE_URL || 'https://emailverifier.reoon.com/api/v1').replace(/\/+$/, '');
@@ -19,7 +19,7 @@ function map(d) {
     status: d.status, overall_score: d.overall_score, is_safe_to_send: d.is_safe_to_send,
     is_deliverable: d.is_deliverable, is_catch_all: d.is_catch_all, verification_mode: d.verification_mode,
   });
-  const extra = { raw, catchAll: typeof d.is_catch_all === 'boolean' ? d.is_catch_all : null };
+  const extra = { raw, score: score100(d.overall_score), catchAll: typeof d.is_catch_all === 'boolean' ? d.is_catch_all : null };
   const quickMode = String(d.verification_mode || '').toLowerCase() === 'quick';
 
   switch (status) {

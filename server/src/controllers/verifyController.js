@@ -70,7 +70,7 @@ exports.history = async (req, res) => {
 };
 
 const EXPORT_COLUMNS = [
-  ['email', 'email'], ['status', 'status'], ['reason', 'reason'], ['details', 'details'], ['confidence', 'confidence'],
+  ['email', 'email'], ['status', 'status'], ['reason', 'reason'], ['details', 'details'], ['score', 'confidence'], ['score_source', 'scoreSource'],
   ['mx_record', 'mxRecord'], ['mailbox', 'mailbox'], ['catch_all', 'catchAll'], ['disposable', 'disposable'],
   ['role_based', 'roleBased'], ['free_provider', 'freeProvider'], ['suggestion', 'suggestion'], ['checked_by', 'provider'], ['verified_at', 'createdAt'],
 ];

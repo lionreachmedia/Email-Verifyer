@@ -62,3 +62,9 @@ test('status mapping table', () => {
   assert.equal(m({ status: 'valid', verification_mode: 'quick' }), 'unknown');
   assert.equal(m({ status: 'something_new' }), 'unknown');
 });
+
+test("Reoon's overall_score is passed through as the score", () => {
+  assert.equal(reoon.map({ status: 'safe', overall_score: 98, is_catch_all: null }).score, 98);
+  assert.equal(reoon.map({ status: 'safe' }).score, null);
+  assert.equal(reoon.map({ status: 'safe', overall_score: 'abc' }).score, null);
+});
