@@ -22,11 +22,11 @@ export default function ForgotPassword() {
     <AuthShell
       title="Reset your password"
       sub="We'll email you a link to choose a new one"
-      footer={<Link to="/login" className="text-accent">Back to sign in</Link>}
+      footer={<Link to="/login" className="link">Back to sign in</Link>}
     >
       {sentTo ? (
-        <p className="text-sm text-white/60 leading-relaxed">
-          If <span className="text-white">{sentTo}</span> has an account, a reset link is on its way. It expires in 30 minutes, so check spam if you don't see it.
+        <p className="text-sm text-ink/80 leading-relaxed">
+          If <span className="font-medium text-ink">{sentTo}</span> has an account, a reset link is on its way. It expires in 30 minutes, so check spam if you don't see it.
         </p>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

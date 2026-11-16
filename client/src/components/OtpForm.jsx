@@ -42,7 +42,7 @@ export default function OtpForm({ email, onVerified, onBack, startCooldown = 60 
 
   return (
     <form onSubmit={verify} className="space-y-4">
-      <p className="text-xs text-white/40">Code sent to <span className="text-white/70">{email}</span></p>
+      <p className="text-xs text-muted">Code sent to <span className="text-ink">{email}</span></p>
       <input
         className="input text-center text-2xl tracking-[0.8rem]"
         inputMode="numeric"
@@ -57,8 +57,8 @@ export default function OtpForm({ email, onVerified, onBack, startCooldown = 60 
         {busy ? <Spinner /> : 'Verify email'}
       </button>
       <div className="flex justify-between text-xs">
-        <button type="button" onClick={onBack} className="text-white/30 hover:text-white/60">Back</button>
-        <button type="button" onClick={resend} disabled={cooldown > 0} className="text-accent disabled:text-white/20">
+        <button type="button" onClick={onBack} className="text-muted hover:text-ink">Back</button>
+        <button type="button" onClick={resend} disabled={cooldown > 0} className="link disabled:text-muted disabled:no-underline">
           {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
         </button>
       </div>

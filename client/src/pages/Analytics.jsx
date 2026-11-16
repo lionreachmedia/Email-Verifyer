@@ -4,8 +4,9 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { analyticsService } from '../services/api';
+import { STATUS_HEX } from '../components/StatusBadge';
 
-const COLORS = ['#2ecc87', '#f05252', '#f5a623', '#9b6dff', '#555a6a'];
+const COLORS = [STATUS_HEX.valid, STATUS_HEX.invalid, STATUS_HEX.risky, STATUS_HEX['catch-all'], STATUS_HEX.unknown];
 
 export default function Analytics() {
   const { data: stats } = useQuery({
@@ -36,60 +37,62 @@ export default function Analytics() {
   ].filter(d => d.value > 0);
 
   const ttStyle = {
-    contentStyle: { background: '#181c22', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: '#e8eaf0', fontSize: 11 },
-    itemStyle: { color: '#8b90a0' },
+    contentStyle: { background: '#1A2620', border: '1px solid #23312A', borderRadius: 12, color: '#ECF2EE', fontSize: 12 },
+    itemStyle: { color: '#ECF2EE' },
+    labelStyle: { color: '#8B9B92' },
     cursor: { fill: 'rgba(255,255,255,0.03)' },
   };
 
-  const axisProps = { fill: '#555a6a', fontSize: 10 };
+  const axisProps = { fill: '#8B9B92', fontSize: 11 };
 
   return (
-    <div className="p-8">
+    <div className="page">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-white/40 text-sm mt-1">Verification trends, domain intelligence, and bulk job history</p>
+        <h1 className="page-title">Analytics</h1>
+        <p className="page-sub">Verification trends, domain intelligence, and bulk job history</p>
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Verified',    value: stats?.total || 0,           color: '' },
-          { label: 'Avg. Confidence',   value: `${stats?.avgConfidence || 0}%`, color: 'text-accent' },
-          { label: 'Valid Rate',        value: stats?.total ? `${Math.round((byStatus.valid / stats.total) * 100)}%` : '—', color: 'text-success' },
-          { label: 'Invalid Rate',      value: stats?.total ? `${Math.round((byStatus.invalid / stats.total) * 100)}%` : '—', color: 'text-danger' },
+          { label: 'Total verified',    value: stats?.total || 0,           color: '' },
+          { label: 'Average score',     value: `${stats?.avgConfidence || 0}%`, color: '' },
+          { label: 'Valid rate',        value: stats?.total ? `${Math.round((byStatus.valid / stats.total) * 100)}%` : '—', color: 'text-ok' },
+          { label: 'Invalid rate',      value: stats?.total ? `${Math.round((byStatus.invalid / stats.total) * 100)}%` : '—', color: 'text-bad' },
         ].map(({ label, value, color }) => (
           <div key={label} className="card p-5">
-            <div className={`text-2xl font-semibold tracking-tight ${color}`}>{value.toLocaleString ? value.toLocaleString() : value}</div>
-            <div className="text-white/30 text-xs mt-1">{label}</div>
+            <div className={`text-[28px] leading-none font-semibold tracking-tight ${color}`}>{value.toLocaleString ? value.toLocaleString() : value}</div>
+            <div className="text-muted text-sm mt-2">{label}</div>
           </div>
         ))}
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-3 gap-6 mb-6">
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
         {/* Area Chart */}
-        <div className="col-span-2 card p-6">
+        <div className="lg:col-span-2 card p-6">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="font-semibold text-sm">Daily Volume — Last 30 Days</h2>
+            <h2 className="font-semibold">Daily volume</h2>
+            <span className="text-xs text-muted">Last 30 days</span>
           </div>
           {daily.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={daily} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f8ef7" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#4f8ef7" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#CFFA39" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#CFFA39" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2ecc87" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#2ecc87" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2FD8CB" stopOpacity={0.14} />
+                    <stop offset="95%" stopColor="#2FD8CB" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="_id" tick={axisProps} axisLine={false} tickLine={false} />
                 <YAxis tick={axisProps} axisLine={false} tickLine={false} />
                 <Tooltip {...ttStyle} />
-                <Area type="monotone" dataKey="count" name="Total" stroke="#4f8ef7" strokeWidth={2} fill="url(#g1)" />
-                <Area type="monotone" dataKey="valid" name="Valid"  stroke="#2ecc87" strokeWidth={1.5} fill="url(#g2)" strokeDasharray="4 2" />
+                <Area type="monotone" dataKey="count" name="Total" stroke="#CFFA39" strokeWidth={2} fill="url(#g1)" />
+                <Area type="monotone" dataKey="valid" name="Valid"  stroke="#2FD8CB" strokeWidth={2} fill="url(#g2)" strokeDasharray="4 2" />
               </AreaChart>
             </ResponsiveContainer>
           ) : <Empty />}
@@ -97,7 +100,7 @@ export default function Analytics() {
 
         {/* Pie */}
         <div className="card p-6">
-          <h2 className="font-semibold text-sm mb-5">Status Mix</h2>
+          <h2 className="font-semibold mb-5">Result mix</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -107,7 +110,7 @@ export default function Analytics() {
                 </Pie>
                 <Tooltip {...ttStyle} />
                 <Legend iconType="circle" iconSize={8} formatter={(v) => (
-                  <span style={{ color: '#8b90a0', fontSize: 11 }}>{v}</span>
+                  <span style={{ color: '#8B9B92', fontSize: 12 }}>{v}</span>
                 )} />
               </PieChart>
             </ResponsiveContainer>
@@ -116,16 +119,16 @@ export default function Analytics() {
       </div>
 
       {/* Top Domains Bar Chart */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <div className="card p-6">
-          <h2 className="font-semibold text-sm mb-5">Top 10 Verified Domains</h2>
+          <h2 className="font-semibold mb-5">Top 10 domains</h2>
           {topDomains.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={topDomains.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 20 }}>
                 <XAxis type="number" tick={axisProps} axisLine={false} tickLine={false} />
-                <YAxis dataKey="_id" type="category" tick={{ ...axisProps, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} width={110} />
+                <YAxis dataKey="_id" type="category" tick={axisProps} axisLine={false} tickLine={false} width={110} />
                 <Tooltip {...ttStyle} />
-                <Bar dataKey="count" fill="#4f8ef7" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="count" name="Checks" fill="#2FD8CB" radius={[0, 4, 4, 0]} barSize={14} />
               </BarChart>
             </ResponsiveContainer>
           ) : <Empty />}
@@ -133,24 +136,24 @@ export default function Analytics() {
 
         {/* Bulk Job History */}
         <div className="card p-6">
-          <h2 className="font-semibold text-sm mb-5">Bulk Job History</h2>
+          <h2 className="font-semibold mb-5">Bulk uploads</h2>
           {jobs?.length > 0 ? (
             <div className="space-y-2 max-h-[220px] overflow-y-auto">
               {jobs.map(job => (
-                <div key={job._id} className="flex items-center gap-3 p-3 bg-bg-3 rounded-xl text-xs">
+                <div key={job._id} className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-surface2">
                   <StatusDot status={job.status} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white/70 truncate font-medium">{job.fileName}</p>
-                    <p className="text-white/30 mt-0.5">{job.totalEmails?.toLocaleString()} emails</p>
+                    <p className="text-ink truncate font-medium">{job.fileName}</p>
+                    <p className="text-muted mt-0.5">{job.totalEmails?.toLocaleString()} emails</p>
                   </div>
-                  <span className="text-white/30 shrink-0">
+                  <span className="text-muted shrink-0">
                     {new Date(job.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-white/20 text-sm h-40 flex items-center justify-center">
+            <div className="text-muted text-sm h-40 flex items-center justify-center">
               No bulk jobs yet
             </div>
           )}
@@ -161,13 +164,13 @@ export default function Analytics() {
 }
 
 function StatusDot({ status }) {
-  const colors = { completed: 'bg-success', processing: 'bg-accent animate-pulse', failed: 'bg-danger', queued: 'bg-warning' };
-  return <div className={`w-2 h-2 rounded-full ${colors[status] || 'bg-white/20'}`} />;
+  const colors = { completed: 'bg-ok', processing: 'bg-catch', failed: 'bg-bad', queued: 'bg-unk' };
+  return <div className={`w-2 h-2 rounded-full ${colors[status] || 'bg-surface/20'}`} />;
 }
 
 function Empty() {
   return (
-    <div className="h-40 flex items-center justify-center text-white/20 text-sm">
+    <div className="h-40 flex items-center justify-center text-muted text-sm">
       No data yet
     </div>
   );

@@ -41,7 +41,7 @@ export default function Register() {
     <AuthShell
       title="Create your account"
       sub="Free credits included. No card needed."
-      footer={<>Already have an account? <Link to="/login" className="text-accent">Sign in</Link></>}
+      footer={<>Already have an account? <Link to="/login" className="link">Sign in</Link></>}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Field label="Full name" error={errors.name?.message}>

@@ -23,8 +23,8 @@ export default function ResetPassword() {
 
   if (!/^[a-f0-9]{64}$/.test(token)) {
     return (
-      <AuthShell title="Link not valid" sub="This reset link is incomplete or broken" footer={<Link to="/forgot-password" className="text-accent">Request a new link</Link>}>
-        <p className="text-sm text-white/60">Open the link from your most recent reset email, or request a new one.</p>
+      <AuthShell title="Link not valid" sub="This reset link is incomplete or broken" footer={<Link to="/forgot-password" className="link">Request a new link</Link>}>
+        <p className="text-sm text-ink/80">Open the link from your most recent reset email, or request a new one.</p>
       </AuthShell>
     );
   }

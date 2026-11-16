@@ -4,12 +4,14 @@ import toast from 'react-hot-toast';
 import { verifyService, errorMessage, downloadBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+const JOB_BADGE = { completed: 'status-valid', processing: 'status-catch-all', queued: 'status-unknown', failed: 'status-invalid' };
+
 const COUNTS = [
-  ['valid', 'Valid', 'text-success', 'bg-success/10'],
-  ['invalid', 'Invalid', 'text-danger', 'bg-danger/10'],
-  ['risky', 'Risky', 'text-warning', 'bg-warning/10'],
-  ['catchAll', 'Catch-all', 'text-purple', 'bg-purple/10'],
-  ['unknown', 'Unknown', 'text-white/40', 'bg-white/5'],
+  ['valid', 'Valid', 'text-ok', 'bg-ok-soft'],
+  ['invalid', 'Invalid', 'text-bad', 'bg-bad-soft'],
+  ['risky', 'Risky', 'text-warn', 'bg-warn-soft'],
+  ['catchAll', 'Catch-all', 'text-catch', 'bg-catch-soft'],
+  ['unknown', 'Unknown', 'text-unk', 'bg-unk-soft'],
 ];
 
 export default function BulkVerify() {
@@ -87,12 +89,12 @@ export default function BulkVerify() {
   const running = job && (job.status === 'queued' || job.status === 'processing');
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="page">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Verify a list</h1>
-        <p className="text-white/40 text-sm mt-1">
+        <h1 className="page-title">Verify a list</h1>
+        <p className="page-sub">
           Upload a CSV or TXT. Duplicates are removed and you're charged 1 credit per unique email, refunded for any we can't verify.
-          You have <span className="text-white">{user?.credits?.toLocaleString() ?? 0}</span> credits.
+          You have <span className="font-semibold text-ink">{user?.credits?.toLocaleString() ?? 0}</span> credits.
         </p>
       </div>
 
@@ -100,28 +102,28 @@ export default function BulkVerify() {
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="font-semibold text-sm">
+              <p className="font-semibold">
                 {job.status === 'completed' ? 'Finished' : job.status === 'failed' ? 'Failed' : job.status === 'queued' ? 'Waiting for the worker…' : 'Verifying…'}
               </p>
-              <p className="text-xs text-white/30 mt-0.5">{job.fileName} · {(job.processedEmails || 0).toLocaleString()} of {(job.totalEmails || 0).toLocaleString()} emails</p>
+              <p className="text-xs text-muted mt-0.5">{job.fileName}: {(job.processedEmails || 0).toLocaleString()} of {(job.totalEmails || 0).toLocaleString()} emails</p>
             </div>
-            <span className="text-sm font-semibold">{job.progress || 0}%</span>
+            <span className="text-[28px] leading-none font-semibold">{job.progress || 0}%</span>
           </div>
-          <div className="h-2 bg-bg-4 rounded-full overflow-hidden mb-5">
-            <div className={`h-full rounded-full transition-all duration-500 ${job.status === 'failed' ? 'bg-danger' : job.status === 'completed' ? 'bg-success' : 'bg-accent'}`} style={{ width: `${job.progress || 0}%` }} />
+          <div className="h-2 bg-surface2 rounded-full overflow-hidden mb-5">
+            <div className={`h-full rounded-full transition-all duration-500 ${job.status === 'failed' ? 'bg-bad' : job.status === 'completed' ? 'bg-ok' : 'bg-lime'}`} style={{ width: `${job.progress || 0}%` }} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {COUNTS.map(([key, label, color, bg]) => (
               <div key={key} className={`${bg} rounded-xl p-3 text-center`}>
                 <div className={`text-xl font-semibold ${color}`}>{(job.results?.[key] || 0).toLocaleString()}</div>
-                <div className="text-xs text-white/40 mt-1">{label}</div>
+                <div className="text-xs text-muted mt-1">{label}</div>
               </div>
             ))}
           </div>
           {job.status === 'queued' && job.processedEmails === 0 && (
-            <p className="text-xs text-warning mt-4">If this stays at 0% for more than a minute, the background worker isn't running. Start it with <code>npm run worker</code>.</p>
+            <p className="text-xs text-warn mt-4">If this stays at 0% for more than a minute, the background worker isn't running. Start it with <code>npm run worker</code>.</p>
           )}
-          {job.error && <p className="text-xs text-danger mt-4">{job.error}</p>}
+          {job.error && <p className="text-xs text-bad mt-4">{job.error}</p>}
           <div className="flex flex-wrap gap-3 mt-6">
             {job.status === 'completed' && (
               <>
@@ -134,17 +136,19 @@ export default function BulkVerify() {
         </div>
       ) : (
         <>
-          <div {...getRootProps()} className={`card border-2 border-dashed p-12 text-center cursor-pointer transition-colors mb-4 ${isDragActive ? 'border-accent bg-accent/5' : 'border-white/10 hover:border-white/20'}`}>
+          <div {...getRootProps()} className={`card border-2 border-dashed px-6 py-14 text-center cursor-pointer transition-colors mb-4 ${isDragActive ? 'border-lime bg-lime/[0.06]' : 'border-side-3 hover:border-lime/50'}`}>
             <input {...getInputProps()} />
             {file ? (
               <>
-                <p className="font-semibold text-accent">{file.name}</p>
-                <p className="text-white/30 text-sm mt-1">{(file.size / 1024).toFixed(1)} KB, ready to verify</p>
+                <UploadIcon />
+                <p className="font-semibold text-ink mt-4">{file.name}</p>
+                <p className="text-sm text-muted mt-1.5">{(file.size / 1024).toFixed(1)} KB, ready to verify</p>
               </>
             ) : (
               <>
-                <p className="font-semibold mb-2">{isDragActive ? 'Drop the file here' : 'Drop a CSV or TXT here, or click to choose'}</p>
-                <p className="text-white/30 text-sm">Up to 100,000 emails or 20 MB</p>
+                <UploadIcon />
+                <p className="font-semibold mt-4 mb-1.5">{isDragActive ? 'Drop the file here' : 'Drop a CSV or TXT here, or click to choose'}</p>
+                <p className="text-muted text-sm">Up to 100,000 emails or 20 MB</p>
               </>
             )}
           </div>
@@ -152,28 +156,28 @@ export default function BulkVerify() {
             <button onClick={upload} disabled={!file || uploading} className="btn-primary">{uploading ? 'Uploading…' : 'Start verification'}</button>
             {file && <button onClick={() => setFile(null)} className="btn-ghost">Clear</button>}
           </div>
-          <div className="card p-6 mb-6 text-sm text-white/50">
-            <p className="font-semibold text-white text-sm mb-2">Accepted formats</p>
-            <p>A CSV with a column called <code className="bg-bg-4 px-1.5 rounded">email</code> (or "Email Address", "E-mail"…), or a plain list with one email per line. Other columns are ignored.</p>
+          <div className="card p-6 mb-6 text-sm text-muted">
+            <p className="font-semibold text-ink mb-2">Accepted formats</p>
+            <p>A CSV with a column called <code className="bg-surface2 border border-line px-1.5 py-0.5 rounded text-ink">email</code> (or "Email Address", "E-mail"…), or a plain list with one email per line. Other columns are ignored.</p>
           </div>
         </>
       )}
 
       {jobs.length > 0 && (
         <div className="card overflow-hidden">
-          <h2 className="font-semibold text-sm px-6 pt-5 pb-3">Recent uploads</h2>
+          <h2 className="font-semibold px-6 pt-5 pb-3">Recent uploads</h2>
           <table className="w-full text-sm">
             <tbody>
               {jobs.map((j) => (
-                <tr key={j.jobId} className="border-t border-white/5">
+                <tr key={j.jobId} className="border-t border-line">
                   <td className="px-6 py-3 truncate max-w-[220px]">{j.fileName}</td>
-                  <td className="px-3 py-3 text-white/40 text-xs">{j.totalEmails.toLocaleString()} emails</td>
-                  <td className="px-3 py-3 text-xs capitalize">{j.status === 'processing' ? `${j.progress}%` : j.status}</td>
-                  <td className="px-3 py-3 text-xs text-white/30">{new Date(j.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-muted text-xs">{j.totalEmails.toLocaleString()} emails</td>
+                  <td className="px-3 py-3"><span className={`badge ${JOB_BADGE[j.status] || 'status-unknown'} capitalize`}>{j.status === 'processing' ? `${j.progress}%` : j.status}</span></td>
+                  <td className="px-3 py-3 text-xs text-muted">{new Date(j.createdAt).toLocaleString()}</td>
                   <td className="px-6 py-3 text-right">
                     {j.status === 'completed'
-                      ? <button onClick={() => exportJob(j)} className="text-accent text-xs">Download</button>
-                      : <button onClick={() => setJob(j)} className="text-accent text-xs">View</button>}
+                      ? <button onClick={() => exportJob(j)} className="link text-xs">Download</button>
+                      : <button onClick={() => setJob(j)} className="link text-xs">View</button>}
                   </td>
                 </tr>
               ))}
@@ -182,5 +186,15 @@ export default function BulkVerify() {
         </div>
       )}
     </div>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <span className="mx-auto w-12 h-12 rounded-2xl bg-lime flex items-center justify-center" aria-hidden="true">
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#111A16" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+    </span>
   );
 }

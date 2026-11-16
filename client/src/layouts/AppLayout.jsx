@@ -27,60 +27,79 @@ export default function AppLayout() {
     ? 'No mailbox checker is configured, so real addresses will come back as "unknown".'
     : !status.workerOnline ? 'The background worker is not running, so bulk lists will wait in the queue.' : null);
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-bg">
-      {/* Sidebar */}
-      <aside className="w-56 min-w-[224px] bg-bg-2 border-r border-white/5 flex flex-col">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/5">
-          <div className="flex items-center gap-3"><Logo /></div>
-        </div>
+  const credits = user?.credits || 0;
+  const initials = (user?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-                    {navItems.map(({ to, label, icon: Icon, end }) => (
+  return (
+    <div className="flex h-screen overflow-hidden bg-canvas">
+      {/* Sidebar (desktop) */}
+      <aside className="hidden lg:flex w-[248px] shrink-0 bg-side border-r border-line flex-col">
+        <div className="px-6 pt-6 pb-8"><Logo /></div>
+
+        <nav className="flex-1 px-3 space-y-1" aria-label="Main">
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) =>
-              `flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 text-sm
-               ${isActive ? 'bg-accent/10 text-accent' : 'text-white/40 hover:text-white hover:bg-bg-4'}`
+              `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors
+               ${isActive ? 'bg-side-2 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-side-2/60'}`
             }>
               {({ isActive }) => (
                 <>
-                  <Icon className={`w-4 h-4 ${isActive ? 'opacity-100' : 'opacity-60'}`} />
-                  <span className="flex-1">{label}</span>
+                  {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-lime" aria-hidden="true" />}
+                  <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-lime' : ''}`} />
+                  <span>{label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Credits */}
-        <div className="p-4 border-t border-white/5">
-          <div className="bg-bg-4 rounded-xl p-3">
-            <div className="flex justify-between text-xs text-white/30 mb-2">
-              <span>Credits</span><span>{user?.credits || 0} left</span>
+        <div className="p-4 space-y-3">
+          <div className="rounded-xl bg-side-2 p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-white/55">Credits</span>
+              <span className="text-lg font-semibold text-white">{credits.toLocaleString()}</span>
             </div>
-            <div className="h-1 bg-bg-3 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-accent to-purple rounded-full"
-                style={{ width: `${Math.min(100, (user?.credits || 0) / 10)}%` }} />
+            <div className="mt-3 h-1.5 bg-side-3 rounded-full overflow-hidden">
+              <div className="h-full bg-aqua rounded-full" style={{ width: `${Math.min(100, credits / 10)}%` }} />
             </div>
           </div>
-          <button onClick={handleLogout}
-            className="mt-3 w-full text-xs text-white/30 hover:text-white/60 transition-colors text-left px-1">
-            Sign out
-          </button>
+          <div className="flex items-center gap-3 px-1">
+            <span className="w-8 h-8 rounded-full bg-side-3 text-white text-xs font-semibold flex items-center justify-center">{initials}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-white truncate">{user?.name}</p>
+              <button onClick={handleLogout} className="text-xs text-white/55 hover:text-white transition-colors">Sign out</button>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
-        {warning && (
-          <div className="bg-warning/10 border-b border-warning/20 text-warning text-sm px-8 py-2.5 flex justify-between gap-4">
-            <span>{warning}</span>
-            <NavLink to="/settings" className="underline shrink-0">Details</NavLink>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar (mobile) */}
+        <header className="lg:hidden bg-side border-b border-line px-4 pt-4">
+          <div className="flex items-center justify-between pb-3">
+            <Logo />
+            <button onClick={handleLogout} className="text-xs text-white/60">Sign out</button>
           </div>
-        )}
-        <Outlet />
-      </main>
+          <nav className="flex gap-1 overflow-x-auto pb-3 -mx-1 px-1" aria-label="Main">
+            {navItems.map(({ to, label, end }) => (
+              <NavLink key={to} to={to} end={end} className={({ isActive }) =>
+                `shrink-0 px-3 py-1.5 rounded-lg text-xs ${isActive ? 'bg-lime text-[#111A16] font-semibold' : 'text-white/60'}`
+              }>{label}</NavLink>
+            ))}
+          </nav>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          {warning && (
+            <div className="bg-warn-soft border-b border-warn/25 text-warn text-sm px-6 lg:px-10 py-3 flex justify-between gap-4">
+              <span>{warning}</span>
+              <NavLink to="/settings" className="font-medium underline underline-offset-4 shrink-0">Details</NavLink>
+            </div>
+          )}
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

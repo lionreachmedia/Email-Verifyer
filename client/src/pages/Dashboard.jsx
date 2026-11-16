@@ -1,170 +1,260 @@
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { analyticsService } from '../services/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { analyticsService, accountService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import StatusBadge from '../components/StatusBadge';
+import { STATUS_HEX } from '../components/StatusBadge';
 
-const COLORS = ['#2ecc87', '#f05252', '#f5a623', '#9b6dff', '#555a6a'];
-
-const statCards = [
-  { key: 'total',      label: 'Total Verified',  color: 'text-white',     bg: 'bg-accent/10',   icon: '📊' },
-  { key: 'valid',      label: 'Valid',            color: 'text-success',   bg: 'bg-success/10',  icon: '✅' },
-  { key: 'invalid',    label: 'Invalid',          color: 'text-danger',    bg: 'bg-danger/10',   icon: '❌' },
-  { key: 'risky',      label: 'Risky',            color: 'text-warning',   bg: 'bg-warning/10',  icon: '⚠️' },
-  { key: 'catch-all',  label: 'Catch-All',        color: 'text-purple',    bg: 'bg-purple/10',   icon: '🪣' },
+const MIX = [
+  { key: 'valid', label: 'Valid' },
+  { key: 'invalid', label: 'Invalid' },
+  { key: 'risky', label: 'Risky' },
+  { key: 'catch-all', label: 'Catch-all' },
+  { key: 'unknown', label: 'Unknown' },
 ];
+
+const JOB_STATE = {
+  completed: { text: 'Done', cls: 'status-valid' },
+  processing: { text: 'Running', cls: 'status-catch-all' },
+  queued: { text: 'Queued', cls: 'status-unknown' },
+  failed: { text: 'Failed', cls: 'status-invalid' },
+};
+
+// Fill days with no activity so the chart always shows a full 14-day window.
+function lastDays(daily, days = 14) {
+  const byDay = Object.fromEntries(daily.map((d) => [d._id, d]));
+  return Array.from({ length: days }, (_, i) => {
+    const date = new Date(Date.now() - (days - 1 - i) * 86400000);
+    const key = date.toISOString().slice(0, 10);
+    const d = byDay[key] || { count: 0, valid: 0, invalid: 0 };
+    return {
+      day: date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      valid: d.valid,
+      invalid: d.invalid,
+      other: Math.max(0, d.count - d.valid - d.invalid),
+    };
+  });
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
 
   const { data: statsData } = useQuery({
     queryKey: ['stats'],
-    queryFn: () => analyticsService.getStats().then(r => r.data.data),
+    queryFn: () => analyticsService.getStats().then((r) => r.data.data),
   });
-
   const { data: chartData } = useQuery({
     queryKey: ['chart'],
-    queryFn: () => analyticsService.getChartData(14).then(r => r.data.data),
+    queryFn: () => analyticsService.getChartData(14).then((r) => r.data.data),
+  });
+  const { data: jobs } = useQuery({
+    queryKey: ['bulk-jobs'],
+    queryFn: () => analyticsService.getBulkJobs().then((r) => r.data.data),
+  });
+  const { data: system } = useQuery({
+    queryKey: ['system-status'],
+    queryFn: () => accountService.systemStatus().then((r) => r.data.data),
   });
 
   const stats = statsData || { total: 0, avgConfidence: 0, byStatus: { valid: 0, invalid: 0, risky: 0, 'catch-all': 0, unknown: 0 } };
-  const daily = chartData?.daily || [];
-  const topDomains = chartData?.topDomains || [];
-
-  const pieData = [
-    { name: 'Valid', value: stats.byStatus.valid },
-    { name: 'Invalid', value: stats.byStatus.invalid },
-    { name: 'Risky', value: stats.byStatus.risky },
-    { name: 'Catch-All', value: stats.byStatus['catch-all'] },
-    { name: 'Unknown', value: stats.byStatus.unknown },
-  ].filter(d => d.value > 0);
+  const total = stats.total || 0;
+  const valid = stats.byStatus.valid || 0;
+  const rate = total ? Math.round((valid / total) * 100) : null;
+  const days = lastDays(chartData?.daily || []);
+  const hasActivity = days.some((d) => d.valid + d.invalid + d.other > 0);
+  const topDomains = (chartData?.topDomains || []).slice(0, 6);
+  const recentJobs = (jobs || []).slice(0, 5);
+  const firstName = user?.name?.split(' ')[0];
 
   return (
-    <div className="p-8">
+    <div className="page">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-white/40 text-sm mt-1">Welcome back, {user?.name?.split(' ')[0]} 👋</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-sub">{firstName ? `Good to see you, ${firstName}. Here's how your lists are holding up.` : "Here's how your lists are holding up."}</p>
         </div>
-        <Link to="/verify" className="btn-primary text-sm">
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          Verify Email
-        </Link>
+        <div className="flex gap-3">
+          <Link to="/bulk" className="btn-ghost">Upload a list</Link>
+          <Link to="/verify" className="btn-primary">Verify an email</Link>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
-        {statCards.map(({ key, label, color, bg, icon }, i) => {
-          const val = key === 'total' ? stats.total : stats.byStatus[key] || 0;
-          return (
-            <motion.div
-              key={key}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="card p-5"
-            >
-              <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center text-base mb-4`}>{icon}</div>
-              <div className={`text-2xl font-semibold tracking-tight ${color}`}>
-                {val.toLocaleString()}
-              </div>
-              <div className="text-white/40 text-xs mt-1">{label}</div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-3 gap-6 mb-6">
-        {/* Area Chart */}
-        <div className="col-span-2 card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-semibold text-sm">Daily Verification Volume</h2>
-            <span className="text-xs text-white/30">Last 14 days</span>
+      {/* List health */}
+      <section className="panel-dark mesh p-7 lg:p-9 mb-6 shadow-lift" aria-labelledby="health-title">
+        <div className="grid lg:grid-cols-[minmax(220px,280px)_1fr] gap-8 lg:gap-12 items-end">
+          <div>
+            <h2 id="health-title" className="text-sm text-white/60 font-medium">Deliverable rate</h2>
+            {total ? (
+              <>
+                <p className="text-[64px] leading-none font-semibold tracking-tight text-lime mt-3">{rate}%</p>
+                <p className="text-sm text-white/70 mt-3">{valid.toLocaleString()} of {total.toLocaleString()} addresses confirmed deliverable</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[64px] leading-none font-semibold tracking-tight text-white/25 mt-3">—</p>
+                <p className="text-sm text-white/70 mt-3">Check an address or upload a list and your rate shows up here.</p>
+              </>
+            )}
           </div>
-          {daily.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={daily} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f8ef7" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#4f8ef7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="_id" tick={{ fill: '#555a6a', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#555a6a', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: '#181c22', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: '#e8eaf0', fontSize: 12 }} />
-                <Area type="monotone" dataKey="count" stroke="#4f8ef7" strokeWidth={2} fill="url(#grad)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChart />
-          )}
-        </div>
 
-        {/* Pie Chart */}
-        <div className="card p-6">
-          <h2 className="font-semibold text-sm mb-6">Status Distribution</h2>
-          {pieData.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={130}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#181c22', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: '#e8eaf0', fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {pieData.map((d, i) => (
-                  <div key={d.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ background: COLORS[i] }} />
-                      <span className="text-white/50">{d.name}</span>
-                    </div>
-                    <span className="text-white/70 font-medium">{d.value.toLocaleString()}</span>
+          <div>
+            <div className="flex h-4 rounded-full overflow-hidden bg-white/[0.08] gap-[2px]" role="img"
+              aria-label={total ? MIX.map((m) => `${m.label} ${stats.byStatus[m.key] || 0}`).join(', ') : 'No results yet'}>
+              {total > 0 && MIX.map((m) => {
+                const n = stats.byStatus[m.key] || 0;
+                return n ? <div key={m.key} style={{ width: `${(n / total) * 100}%`, background: STATUS_HEX[m.key] }} title={`${m.label}: ${n}`} /> : null;
+              })}
+            </div>
+            <dl className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-5">
+              {MIX.map((m) => {
+                const n = stats.byStatus[m.key] || 0;
+                return (
+                  <div key={m.key}>
+                    <dt className="flex items-center gap-2 text-xs text-white/60">
+                      <span className="w-2 h-2 rounded-full" style={{ background: STATUS_HEX[m.key] }} aria-hidden="true" />
+                      {m.label}
+                    </dt>
+                    <dd className="mt-1.5 text-xl font-semibold text-white">{n.toLocaleString()}</dd>
+                    <dd className="text-xs text-white/50">{total ? `${Math.round((n / total) * 100)}%` : '0%'}</dd>
                   </div>
+                );
+              })}
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      {/* Activity + credits */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        <section className="card p-6 lg:col-span-2">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-semibold">Activity</h2>
+            <span className="text-xs text-muted">Last 14 days</span>
+          </div>
+          {hasActivity ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={days} margin={{ top: 4, right: 0, bottom: 0, left: -24 }} barCategoryGap="28%">
+                  <CartesianGrid vertical={false} stroke="#23312A" />
+                  <XAxis dataKey="day" tick={{ fill: '#8B9B92', fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis allowDecimals={false} tick={{ fill: '#8B9B92', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: '#1A2620', border: '1px solid #23312A', borderRadius: 12, fontSize: 12, color: '#ECF2EE' }} itemStyle={{ color: '#ECF2EE' }} labelStyle={{ color: '#8B9B92' }} />
+                  <Bar dataKey="valid" name="Valid" stackId="a" fill={STATUS_HEX.valid} />
+                  <Bar dataKey="invalid" name="Invalid" stackId="a" fill={STATUS_HEX.invalid} />
+                  <Bar dataKey="other" name="Other" stackId="a" fill="#3B4C43" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex gap-5 mt-3 text-xs text-muted">
+                {[['Valid', STATUS_HEX.valid], ['Invalid', STATUS_HEX.invalid], ['Risky, catch-all and unknown', '#3B4C43']].map(([l, c]) => (
+                  <span key={l} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />{l}</span>
                 ))}
               </div>
             </>
           ) : (
-            <EmptyChart />
+            <Empty text="No checks in the last 14 days." />
           )}
-        </div>
+        </section>
+
+        <section className="card p-6 flex flex-col">
+          <h2 className="font-semibold">Credits</h2>
+          <p className="text-[40px] leading-none font-semibold tracking-tight mt-4">{(user?.credits || 0).toLocaleString()}</p>
+          <p className="text-sm text-muted mt-2">1 credit per address. Results we can't confirm are refunded.</p>
+          <div className="mt-6 pt-5 border-t border-line space-y-3 text-sm">
+            <Row label="Addresses verified" value={(user?.totalVerified || 0).toLocaleString()} />
+            <Row label="Average score" value={total ? `${stats.avgConfidence}%` : '—'} />
+          </div>
+          {system && (
+            <div className="mt-auto pt-5 space-y-2 text-sm">
+              <Health ok={system.workerOnline} label="Bulk worker" />
+              <Health ok={system.mailboxChecksEnabled} label="Mailbox checker" />
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Top Domains */}
-      {topDomains.length > 0 && (
-        <div className="card p-6">
-          <h2 className="font-semibold text-sm mb-5">Top Verified Domains</h2>
-          <div className="space-y-3">
-            {topDomains.slice(0, 8).map((d, i) => (
-              <div key={d._id} className="flex items-center gap-3 text-sm">
-                <span className="text-white/20 text-xs w-4">{i + 1}</span>
-                <span className="font-mono text-xs text-white/70 flex-1">{d._id}</span>
-                <div className="flex-1 h-1.5 bg-bg-4 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-accent to-teal rounded-full"
-                    style={{ width: `${Math.round((d.count / topDomains[0].count) * 100)}%` }} />
-                </div>
-                <span className="text-white/40 text-xs w-12 text-right">{d.count.toLocaleString()}</span>
-              </div>
-            ))}
+      {/* Domains + uploads */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <section className="card p-6">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-semibold">Top domains</h2>
+            <Link to="/analytics" className="link text-xs">Analytics</Link>
           </div>
-        </div>
-      )}
+          {topDomains.length ? (
+            <ul className="space-y-3.5">
+              {topDomains.map((d) => (
+                <li key={d._id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-4 text-sm">
+                  <span className="truncate">{d._id}</span>
+                  <span className="h-1.5 bg-surface2 rounded-full overflow-hidden">
+                    <span className="block h-full bg-aqua rounded-full" style={{ width: `${Math.max(4, Math.round((d.count / topDomains[0].count) * 100))}%` }} />
+                  </span>
+                  <span className="text-muted w-12 text-right">{d.count.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty text="Domains appear here once you verify a few addresses." />
+          )}
+        </section>
+
+        <section className="card p-6">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-semibold">Recent uploads</h2>
+            <Link to="/bulk" className="link text-xs">Bulk Verify</Link>
+          </div>
+          {recentJobs.length ? (
+            <ul className="divide-y divide-line -my-3">
+              {recentJobs.map((j) => {
+                const st = JOB_STATE[j.status] || JOB_STATE.queued;
+                const pct = j.totalEmails ? Math.round(((j.results?.valid || 0) / j.totalEmails) * 100) : 0;
+                return (
+                  <li key={j.jobId} className="flex items-center gap-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{j.fileName}</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        {j.totalEmails.toLocaleString()} addresses{j.status === 'completed' ? `, ${pct}% valid` : ''}
+                      </p>
+                    </div>
+                    <span className={`badge ${st.cls}`}>{j.status === 'processing' ? `${j.progress}%` : st.text}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <Empty text="No lists uploaded yet." action={<Link to="/bulk" className="link text-sm">Upload your first list</Link>} />
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-function EmptyChart() {
+function Row({ label, value }) {
   return (
-    <div className="h-40 flex items-center justify-center text-white/20 text-sm">
-      No data yet — start verifying emails
+    <div className="flex justify-between">
+      <span className="text-muted">{label}</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+}
+
+function Health({ ok, label }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted">{label}</span>
+      <span className={`flex items-center gap-2 font-medium ${ok ? 'text-ok' : 'text-bad'}`}>
+        <span className={`w-2 h-2 rounded-full ${ok ? 'bg-ok' : 'bg-bad'}`} aria-hidden="true" />
+        {ok ? 'Online' : 'Offline'}
+      </span>
+    </div>
+  );
+}
+
+function Empty({ text, action }) {
+  return (
+    <div className="h-40 flex flex-col items-center justify-center gap-3 text-sm text-muted text-center">
+      <p>{text}</p>
+      {action}
     </div>
   );
 }

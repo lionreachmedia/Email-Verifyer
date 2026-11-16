@@ -2,42 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme: Forest Night ───────────────────────────────────────────────
+   RGB triplets so Tailwind opacity modifiers work (e.g. bg-surface/80). */
+:root {
+  --canvas: 12 20 16;      /* #0C1410 page */
+  --side: 17 26 22;        /* #111A16 sidebar */
+  --side2: 26 38 32;       /* #1A2620 */
+  --side3: 36 51 43;       /* #24332B */
+  --surface: 19 29 24;     /* #131D18 panels */
+  --surface2: 26 38 32;    /* #1A2620 inner wells, hovers */
+  --line: 35 49 42;        /* #23312A borders */
+  --ink: 236 242 238;      /* #ECF2EE main text */
+  --muted: 139 155 146;    /* #8B9B92 secondary text */
+  --aqua: 47 216 203;      /* #2FD8CB supporting data */
+  --ok: 92 208 138;        /* #5CD08A valid */
+  --bad: 244 124 110;      /* #F47C6E invalid */
+  --warn: 242 182 90;      /* #F2B65A risky */
+  --catch: 165 148 255;    /* #A594FF catch-all */
+  --unk: 120 136 128;      /* #788880 unknown */
+  color-scheme: dark;
+}
+
 @layer base {
   body {
-    @apply bg-bg text-white font-sans;
+    @apply bg-canvas text-ink font-sans;
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum' 1;
   }
   * { box-sizing: border-box; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #111318; }
-  ::-webkit-scrollbar-thumb { background: #1e232b; border-radius: 3px; }
+  :focus-visible { outline: 2px solid #CFFA39; outline-offset: 2px; }
+  ::selection { background: #CFFA39; color: #111A16; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--side3)); border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 }
 
 @layer components {
-  .card {
-    @apply bg-bg-2 border border-white/5 rounded-2xl;
+  /* Surfaces */
+  .card { @apply bg-surface border border-line rounded-2xl shadow-panel; }
+  .panel-dark { @apply text-white rounded-2xl border border-white/[0.07] overflow-hidden relative; }
+  /* Mesh glow for the hero panel: lime + aqua blooms fading over deep forest */
+  .mesh {
+    background:
+      radial-gradient(90% 120% at 0% 0%, rgba(207,250,57,0.16), transparent 55%),
+      radial-gradient(70% 110% at 100% 10%, rgba(47,216,203,0.13), transparent 60%),
+      radial-gradient(120% 90% at 60% 130%, rgba(6,50,47,0.9), transparent 70%),
+      #0F1A15;
   }
+
+  /* Page header */
+  .page { @apply px-6 py-8 lg:px-10 max-w-[1240px]; }
+  .page-title { @apply text-[26px] leading-tight font-semibold tracking-tight text-ink; }
+  .page-sub { @apply text-sm text-muted mt-1.5; }
+
+  /* Buttons: lime is the primary action, always with dark text */
   .btn-primary {
-    @apply bg-accent hover:bg-accent-dark text-white font-medium px-5 py-2.5 rounded-xl
-           transition-all duration-150 flex items-center gap-2 disabled:opacity-40
-           disabled:cursor-not-allowed active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 bg-lime text-[#111A16] font-semibold text-sm
+           px-5 py-2.5 rounded-xl transition-all duration-150 hover:bg-lime-dark
+           shadow-[0_8px_24px_-10px_rgba(207,250,57,0.55)]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
   }
   .btn-ghost {
-    @apply bg-transparent border border-white/10 hover:bg-bg-4 text-white/60
-           hover:text-white font-medium px-4 py-2 rounded-xl transition-all duration-150
-           flex items-center gap-2 text-sm;
+    @apply inline-flex items-center justify-center gap-2 bg-surface border border-line text-ink font-medium text-sm
+           px-4 py-2.5 rounded-xl transition-colors duration-150 hover:bg-surface2 hover:border-side-3
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
+  .link { @apply font-medium text-lime underline decoration-lime/40 decoration-2 underline-offset-4 hover:decoration-lime; }
+
+  /* Form fields */
   .input {
-    @apply bg-bg-3 border border-white/5 rounded-xl px-4 py-3 text-white
-           placeholder-white/20 outline-none focus:border-accent/40 transition-colors
-           font-mono text-sm w-full;
+    @apply w-full bg-surface2 border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder-muted/70
+           outline-none transition-colors focus:border-lime/60 focus:ring-4 focus:ring-lime/15;
   }
-  .status-valid   { @apply bg-success/10 text-success border border-success/20; }
-  .status-invalid { @apply bg-danger/10 text-danger border border-danger/20; }
-  .status-risky   { @apply bg-warning/10 text-warning border border-warning/20; }
-  .status-catch-all { @apply bg-purple/10 text-purple border border-purple/20; }
-  .status-unknown { @apply bg-white/5 text-white/40 border border-white/10; }
-  .badge {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
-  }
+
+  /* Status badges */
+  .badge { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap; }
+  .status-valid     { @apply bg-ok-soft text-ok; }
+  .status-invalid   { @apply bg-bad-soft text-bad; }
+  .status-risky     { @apply bg-warn-soft text-warn; }
+  .status-catch-all { @apply bg-catch-soft text-catch; }
+  .status-unknown   { @apply bg-unk-soft text-[#B4C2BA]; }
+
+  /* Tables */
+  .th { @apply text-left px-4 py-3 text-xs font-medium text-muted bg-surface2/60 border-b border-line whitespace-nowrap; }
+  .td { @apply px-4 py-3 border-b border-line; }
 }

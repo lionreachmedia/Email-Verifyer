@@ -33,11 +33,11 @@ export default function History() {
   ).then(() => toast.success('Exported')).catch(() => toast.error('Export failed'));
 
   return (
-    <div className="p-8">
-      <div className="flex items-start justify-between mb-8">
+    <div className="page">
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Verification History</h1>
-          <p className="text-white/40 text-sm mt-1">All your past email verifications</p>
+          <h1 className="page-title">Verification History</h1>
+          <p className="page-sub">All your past email verifications</p>
         </div>
         <button onClick={handleExport} className="btn-ghost">
           <DownloadIcon /> Export CSV
@@ -45,20 +45,20 @@ export default function History() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 sm:items-center">
         <input
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="input w-72"
+          className="input sm:w-80"
           placeholder="Search email..."
         />
-        <div className="flex gap-1 bg-bg-2 border border-white/5 rounded-xl p-1">
+        <div className="flex gap-1 bg-surface border border-line rounded-xl p-1 overflow-x-auto" role="group" aria-label="Filter by result">
           {STATUSES.map(s => (
             <button
               key={s}
               onClick={() => { setStatus(s); setPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
-                ${status === s ? 'bg-bg-4 text-white' : 'text-white/30 hover:text-white'}`}
+                ${status === s ? 'bg-lime text-[#111A16]' : 'text-muted hover:text-ink hover:bg-surface2'}`}
             >
               {s}
             </button>
@@ -69,28 +69,28 @@ export default function History() {
       {/* Table */}
       <div className="card overflow-hidden">
         <div className={`transition-opacity ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm min-w-[860px]">
             <thead>
-              <tr className="border-b border-white/5">
+              <tr>
                 {['Email', 'Status', 'Reason', 'Score', 'Mailbox', 'Disposable', 'Role', 'Checked'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-white/20 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="th">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-b border-white/5">
+                  <tr key={i} className="border-b border-line">
                     {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-bg-4 rounded animate-pulse" style={{ width: j === 0 ? '160px' : '60px' }} />
+                        <div className="h-4 bg-surface2 rounded animate-pulse" style={{ width: j === 0 ? '160px' : '60px' }} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : verifications.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center text-white/20 text-sm">
+                  <td colSpan={8} className="px-4 py-16 text-center text-muted text-sm">
                     No results match these filters
                   </td>
                 </tr>
@@ -101,39 +101,39 @@ export default function History() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.02 }}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                    className="hover:bg-surface2/60 transition-colors"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-white/80">{v.email}</td>
-                    <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
-                    <td className="px-4 py-3 text-xs text-white/50" title={v.details}>{reasonLabel(v.reason)}</td>
-                    <td className="px-4 py-3">
+                    <td className="td text-sm font-medium text-ink">{v.email}</td>
+                    <td className="td"><StatusBadge status={v.status} /></td>
+                    <td className="td text-xs text-muted" title={v.details}>{reasonLabel(v.reason)}</td>
+                    <td className="td">
                       <ConfScore score={v.confidence} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-white/50 capitalize">{v.mailbox || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs ${v.disposable ? 'text-danger' : 'text-white/30'}`}>
+                    <td className="td text-xs text-muted capitalize">{v.mailbox || '—'}</td>
+                    <td className="td">
+                      <span className={`text-xs ${v.disposable ? 'text-bad' : 'text-muted'}`}>
                         {v.disposable ? 'Yes' : 'No'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs ${v.roleBased ? 'text-warning' : 'text-white/30'}`}>
+                    <td className="td">
+                      <span className={`text-xs ${v.roleBased ? 'text-warn' : 'text-muted'}`}>
                         {v.roleBased ? 'Yes' : 'No'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-white/30">
+                    <td className="td text-xs text-muted">
                       {new Date(v.createdAt).toLocaleDateString()}
                     </td>
                   </motion.tr>
                 ))
               )}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="px-4 py-4 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-white/30">
+          <div className="px-4 py-4 border-t border-line flex items-center justify-between">
+            <span className="text-xs text-muted">
               Showing {((page - 1) * 20) + 1}–{Math.min(page * 20, pagination.total)} of {pagination.total?.toLocaleString()}
             </span>
             <div className="flex gap-1">
@@ -142,14 +142,14 @@ export default function History() {
                 disabled={page === 1}
                 className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-30"
               >
-                ← Prev
+                Previous
               </button>
               <button
                 onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
                 disabled={page === pagination.pages}
                 className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-30"
               >
-                Next →
+                Next
               </button>
             </div>
           </div>
@@ -160,8 +160,8 @@ export default function History() {
 }
 
 function ConfScore({ score }) {
-  if (score === null || score === undefined) return <span className="text-xs text-white/30">—</span>;
-  const color = score >= 80 ? '#2ecc87' : score >= 50 ? '#f5a623' : '#f05252';
+  if (score === null || score === undefined) return <span className="text-xs text-muted">—</span>;
+  const color = score >= 80 ? '#5CD08A' : score >= 50 ? '#F2B65A' : '#F47C6E';
   return <span className="text-xs font-semibold" style={{ color }}>{score}%</span>;
 }
 

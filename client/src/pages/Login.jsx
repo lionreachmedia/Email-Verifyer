@@ -46,13 +46,13 @@ export default function Login() {
     <AuthShell
       title="Welcome back"
       sub={params.get('expired') ? 'Your session expired. Sign in again.' : 'Sign in to your MailGuard account'}
-      footer={<>No account yet? <Link to="/register" className="text-accent">Create one</Link></>}
+      footer={<>No account yet? <Link to="/register" className="link">Create one</Link></>}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Field label="Email" error={errors.email?.message}>
           <input {...register('email', { required: 'Enter your email' })} type="email" autoComplete="email" className="input" placeholder="you@company.com" />
         </Field>
-        <Field label="Password" error={errors.password?.message} right={<Link to="/forgot-password" className="text-xs text-accent">Forgot password?</Link>}>
+        <Field label="Password" error={errors.password?.message} right={<Link to="/forgot-password" className="text-xs link">Forgot password?</Link>}>
           <input {...register('password', { required: 'Enter your password' })} type="password" autoComplete="current-password" className="input" placeholder="••••••••" />
         </Field>
         <button type="submit" disabled={isSubmitting} className="btn-primary w-full justify-center py-3">
