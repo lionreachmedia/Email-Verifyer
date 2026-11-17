@@ -4,11 +4,14 @@ import toast from 'react-hot-toast';
 import { accountService, errorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { PROVIDER_NAMES } from '../lib/reasons';
+import Patch from '../components/Patch';
+import { useProviderCredits } from '../lib/useProviderCredits';
 
 export default function Settings() {
   const { user, refreshUser } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [newKey, setNewKey] = useState(null);
+  const { data: pc } = useProviderCredits();
   const { data: status, refetch } = useQuery({ queryKey: ['system-status'], queryFn: () => accountService.systemStatus().then((r) => r.data.data) });
 
   const saveName = async (e) => {
@@ -45,7 +48,7 @@ export default function Settings() {
         </form>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <dt className="text-muted">Email</dt><dd>{user?.email}</dd>
-          <dt className="text-muted">Credits left</dt><dd>{user?.credits?.toLocaleString()}</dd>
+          <dt className="text-muted">MailGuard credits</dt><dd>{user?.credits?.toLocaleString()}</dd>
           <dt className="text-muted">Emails verified</dt><dd>{user?.totalVerified?.toLocaleString()}</dd>
         </dl>
       </section>
@@ -81,11 +84,19 @@ export default function Settings() {
         </div>
         {!status ? <p className="text-sm text-muted">Loading…</p> : (
           <ul className="space-y-2 text-sm">
-            <StatusRow ok={status.workerOnline} label="Background worker (bulk lists)" bad="Not running: start it with npm run worker" />
+            <StatusRow ok={status.workerOnline} label="Background worker (bulk lists)" bad="Not running: check the worker service" />
             <StatusRow ok={status.mailConfigured} label="Outgoing email (sign-up codes)" bad="Not configured: codes print in the server console" warnOnly />
             {status.providers.map((p, i) => (
               <StatusRow key={p.name} ok={p.configured} label={`Checker ${i + 1}: ${PROVIDER_NAMES[p.name] || p.name}`} bad={p.note} />
             ))}
+            {pc?.configured && (
+              <li className="flex items-center justify-between gap-4">
+                <span>Reoon balance</span>
+                {pc.ok
+                  ? <Patch tone={pc.total < 50 ? 'warn' : 'aqua'}>{`${pc.total.toLocaleString()} credits (instant ${pc.instant ?? 0}, daily ${pc.daily ?? 0})`}</Patch>
+                  : <Patch tone="bad" icon="x" className="!whitespace-normal">{pc.error}</Patch>}
+              </li>
+            )}
             {!status.mailboxChecksEnabled && <li className="text-bad text-xs pt-2">No mailbox checker is configured, so real addresses will come back as "unknown". See the setup guide.</li>}
           </ul>
         )}
@@ -96,9 +107,9 @@ export default function Settings() {
 
 function StatusRow({ ok, label, bad, warnOnly }) {
   return (
-    <li className="flex items-start justify-between gap-4">
+    <li className="flex items-center justify-between gap-4">
       <span>{label}</span>
-      <span className={`text-xs text-right ${ok ? 'text-ok' : warnOnly ? 'text-warn' : 'text-bad'}`}>{ok ? 'OK' : bad}</span>
+      <Patch tone={ok ? 'ok' : warnOnly ? 'warn' : 'bad'} icon={ok ? 'check' : warnOnly ? 'alert' : 'x'} className="!whitespace-normal text-right">{ok ? 'OK' : bad}</Patch>
     </li>
   );
 }

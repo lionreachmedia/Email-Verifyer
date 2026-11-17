@@ -66,6 +66,7 @@ export const accountService = {
   createApiKey: () => api.post('/user/api-key'),
   revokeApiKey: () => api.delete('/user/api-key'),
   systemStatus: () => api.get('/system/status'),
+  providerCredits: (fresh) => api.get('/system/provider-credits', { params: fresh ? { fresh: 1 } : {} }),
 };
 
 export async function downloadBlob(promise, filename) {

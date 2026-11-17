@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { verifyService, errorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
+import Patch from '../components/Patch';
+import { useRefreshProviderCredits } from '../lib/useProviderCredits';
 import { reasonLabel, PROVIDER_NAMES } from '../lib/reasons';
 
 const MAILBOX_TEXT = {
@@ -21,6 +23,7 @@ const STATUS_HELP = {
 
 export default function SingleVerify() {
   const { refreshUser } = useAuth();
+  const refreshProviderCredits = useRefreshProviderCredits();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -33,6 +36,7 @@ export default function SingleVerify() {
       const res = await verifyService.single(value.trim());
       setResult(res.data.data);
       refreshUser();
+      refreshProviderCredits();
     } catch (err) {
       toast.error(errorMessage(err, 'Verification failed'));
     } finally {
@@ -99,15 +103,15 @@ export default function SingleVerify() {
             </div>
 
             <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line">
-              <div className="p-6 space-y-3">
+              <div className="p-6 space-y-2.5">
                 {checks.map(([label, value, goodWhenTrue, text]) => {
                   const known = value !== null && value !== undefined;
                   const good = goodWhenTrue === null ? null : known ? (goodWhenTrue ? !!value : !value) : null;
-                  const color = good === null ? 'text-muted' : good ? 'text-ok' : 'text-bad';
+                  const tone = good === null ? 'unk' : good ? 'ok' : 'bad';
                   return (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted">{label}</span>
-                      <span className={`text-xs font-medium ${color}`}>{text || (known ? (value ? 'Yes' : 'No') : 'Unknown')}</span>
+                      <Patch tone={tone} size="sm">{text || (known ? (value ? 'Yes' : 'No') : 'Unknown')}</Patch>
                     </div>
                   );
                 })}

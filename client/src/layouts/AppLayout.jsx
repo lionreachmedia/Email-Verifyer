@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { accountService } from '../services/api';
 import Logo from '../components/Logo';
+import Patch from '../components/Patch';
+import { useProviderCredits, LOW_CREDITS } from '../lib/useProviderCredits';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: GridIcon, end: true },
@@ -27,7 +29,7 @@ export default function AppLayout() {
     ? 'No mailbox checker is configured, so real addresses will come back as "unknown".'
     : !status.workerOnline ? 'The background worker is not running, so bulk lists will wait in the queue.' : null);
 
-  const credits = user?.credits || 0;
+  const { data: pc } = useProviderCredits();
   const initials = (user?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
   return (
@@ -54,15 +56,7 @@ export default function AppLayout() {
         </nav>
 
         <div className="p-4 space-y-3">
-          <div className="rounded-xl bg-side-2 p-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-white/55">Credits</span>
-              <span className="text-lg font-semibold text-white">{credits.toLocaleString()}</span>
-            </div>
-            <div className="mt-3 h-1.5 bg-side-3 rounded-full overflow-hidden">
-              <div className="h-full bg-aqua rounded-full" style={{ width: `${Math.min(100, credits / 10)}%` }} />
-            </div>
-          </div>
+          <CreditsWidget pc={pc} userCredits={user?.credits || 0} />
           <div className="flex items-center gap-3 px-1">
             <span className="w-8 h-8 rounded-full bg-side-3 text-white text-xs font-semibold flex items-center justify-center">{initials}</span>
             <div className="min-w-0 flex-1">
@@ -100,6 +94,41 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+    </div>
+  );
+}
+
+function CreditsWidget({ pc, userCredits }) {
+  // Reoon not in use: fall back to the user's MailGuard credits.
+  if (pc && !pc.configured) {
+    return (
+      <div className="rounded-xl bg-side-2 p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-white/55">Credits</span>
+          <span className="text-lg font-semibold text-white">{userCredits.toLocaleString()}</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl bg-side-2 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-white/55">Reoon credits</span>
+        {pc?.ok && pc.total < LOW_CREDITS && <Patch tone="warn" size="sm">Low</Patch>}
+      </div>
+      {!pc ? (
+        <p className="text-lg font-semibold text-white/30 mt-1">…</p>
+      ) : pc.ok ? (
+        <>
+          <p className="text-2xl font-semibold text-white mt-1">{pc.total.toLocaleString()}</p>
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+            <div><p className="text-[11px] text-white/45">Instant</p><p className="text-sm font-medium text-white">{(pc.instant ?? 0).toLocaleString()}</p></div>
+            <div><p className="text-[11px] text-white/45">Daily</p><p className="text-sm font-medium text-white">{(pc.daily ?? 0).toLocaleString()}</p></div>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-bad mt-2">Couldn&apos;t load balance: {pc.error}</p>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { analyticsService } from '../services/api';
 import { STATUS_HEX } from '../components/StatusBadge';
+import { JobStatus } from '../components/Patch';
 
 const COLORS = [STATUS_HEX.valid, STATUS_HEX.invalid, STATUS_HEX.risky, STATUS_HEX['catch-all'], STATUS_HEX.unknown];
 
@@ -141,14 +142,14 @@ export default function Analytics() {
             <div className="space-y-2 max-h-[220px] overflow-y-auto">
               {jobs.map(job => (
                 <div key={job._id} className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-surface2">
-                  <StatusDot status={job.status} />
                   <div className="flex-1 min-w-0">
                     <p className="text-ink truncate font-medium">{job.fileName}</p>
                     <p className="text-muted mt-0.5">{job.totalEmails?.toLocaleString()} emails</p>
                   </div>
-                  <span className="text-muted shrink-0">
+                  <span className="text-muted shrink-0 text-xs">
                     {new Date(job.createdAt).toLocaleDateString()}
                   </span>
+                  <JobStatus job={job} />
                 </div>
               ))}
             </div>
@@ -163,10 +164,6 @@ export default function Analytics() {
   );
 }
 
-function StatusDot({ status }) {
-  const colors = { completed: 'bg-ok', processing: 'bg-catch', failed: 'bg-bad', queued: 'bg-unk' };
-  return <div className={`w-2 h-2 rounded-full ${colors[status] || 'bg-surface/20'}`} />;
-}
 
 function Empty() {
   return (

@@ -3,19 +3,20 @@ import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import { verifyService, errorMessage, downloadBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
-const JOB_BADGE = { completed: 'status-valid', processing: 'status-catch-all', queued: 'status-unknown', failed: 'status-invalid' };
+import { JobStatus } from '../components/Patch';
+import { useRefreshProviderCredits } from '../lib/useProviderCredits';
 
 const COUNTS = [
-  ['valid', 'Valid', 'text-ok', 'bg-ok-soft'],
-  ['invalid', 'Invalid', 'text-bad', 'bg-bad-soft'],
-  ['risky', 'Risky', 'text-warn', 'bg-warn-soft'],
-  ['catchAll', 'Catch-all', 'text-catch', 'bg-catch-soft'],
-  ['unknown', 'Unknown', 'text-unk', 'bg-unk-soft'],
+  ['valid', 'Valid', 'ok'],
+  ['invalid', 'Invalid', 'bad'],
+  ['risky', 'Risky', 'warn'],
+  ['catchAll', 'Catch-all', 'catch'],
+  ['unknown', 'Unknown', 'unk'],
 ];
 
 export default function BulkVerify() {
   const { user, refreshUser } = useAuth();
+  const refreshProviderCredits = useRefreshProviderCredits();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [job, setJob] = useState(null);
@@ -46,7 +47,7 @@ export default function BulkVerify() {
       try {
         const { data } = await verifyService.getBulkStatus(job.jobId);
         setJob(data.data);
-        if (data.data.status === 'completed') { toast.success('Bulk verification finished'); refreshUser(); loadJobs(); return; }
+        if (data.data.status === 'completed') { toast.success('Bulk verification finished'); refreshUser(); refreshProviderCredits(); loadJobs(); return; }
         if (data.data.status === 'failed') { toast.error(data.data.error || 'Job failed'); refreshUser(); loadJobs(); return; }
       } catch { /* network blip: keep polling */ }
       timer.current = setTimeout(poll, 2500);
@@ -93,8 +94,8 @@ export default function BulkVerify() {
       <div className="mb-8">
         <h1 className="page-title">Verify a list</h1>
         <p className="page-sub">
-          Upload a CSV or TXT. Duplicates are removed and you're charged 1 credit per unique email, refunded for any we can't verify.
-          You have <span className="font-semibold text-ink">{user?.credits?.toLocaleString() ?? 0}</span> credits.
+          Upload a CSV or TXT. Duplicates are removed and each unique email uses 1 MailGuard credit, refunded for any we can't verify.
+          You have <span className="font-semibold text-ink">{user?.credits?.toLocaleString() ?? 0}</span> MailGuard credits.
         </p>
       </div>
 
@@ -113,10 +114,10 @@ export default function BulkVerify() {
             <div className={`h-full rounded-full transition-all duration-500 ${job.status === 'failed' ? 'bg-bad' : job.status === 'completed' ? 'bg-ok' : 'bg-lime'}`} style={{ width: `${job.progress || 0}%` }} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {COUNTS.map(([key, label, color, bg]) => (
-              <div key={key} className={`${bg} rounded-xl p-3 text-center`}>
-                <div className={`text-xl font-semibold ${color}`}>{(job.results?.[key] || 0).toLocaleString()}</div>
-                <div className="text-xs text-muted mt-1">{label}</div>
+            {COUNTS.map(([key, label, tone]) => (
+              <div key={key} className={`glass-tile patch-${tone} rounded-xl p-3 text-center`}>
+                <div className="text-xl font-semibold">{(job.results?.[key] || 0).toLocaleString()}</div>
+                <div className="text-xs mt-1 opacity-80">{label}</div>
               </div>
             ))}
           </div>
@@ -172,7 +173,7 @@ export default function BulkVerify() {
                 <tr key={j.jobId} className="border-t border-line">
                   <td className="px-6 py-3 truncate max-w-[220px]">{j.fileName}</td>
                   <td className="px-3 py-3 text-muted text-xs">{j.totalEmails.toLocaleString()} emails</td>
-                  <td className="px-3 py-3"><span className={`badge ${JOB_BADGE[j.status] || 'status-unknown'} capitalize`}>{j.status === 'processing' ? `${j.progress}%` : j.status}</span></td>
+                  <td className="px-3 py-3"><JobStatus job={j} /></td>
                   <td className="px-3 py-3 text-xs text-muted">{new Date(j.createdAt).toLocaleString()}</td>
                   <td className="px-6 py-3 text-right">
                     {j.status === 'completed'

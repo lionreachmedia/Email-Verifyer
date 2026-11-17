@@ -54,5 +54,6 @@ router.put('/user/profile', protect, [body('name').isString().trim().isLength({ 
 router.post('/user/api-key', protect, h(user.createApiKey));
 router.delete('/user/api-key', protect, h(user.revokeApiKey));
 router.get('/system/status', protect, h(user.systemStatus));
+router.get('/system/provider-credits', protect, h(user.providerCredits));
 
 module.exports = router;

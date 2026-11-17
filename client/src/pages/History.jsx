@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { verifyService, downloadBlob } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
+import Patch from '../components/Patch';
 import { reasonLabel } from '../lib/reasons';
 
 const STATUSES = ['all', 'valid', 'invalid', 'risky', 'catch-all', 'unknown'];
@@ -111,14 +112,10 @@ export default function History() {
                     </td>
                     <td className="td text-xs text-muted capitalize">{v.mailbox || '—'}</td>
                     <td className="td">
-                      <span className={`text-xs ${v.disposable ? 'text-bad' : 'text-muted'}`}>
-                        {v.disposable ? 'Yes' : 'No'}
-                      </span>
+                      <Patch tone={v.disposable ? 'bad' : 'unk'} size="sm">{v.disposable ? 'Yes' : 'No'}</Patch>
                     </td>
                     <td className="td">
-                      <span className={`text-xs ${v.roleBased ? 'text-warn' : 'text-muted'}`}>
-                        {v.roleBased ? 'Yes' : 'No'}
-                      </span>
+                      <Patch tone={v.roleBased ? 'warn' : 'unk'} size="sm">{v.roleBased ? 'Yes' : 'No'}</Patch>
                     </td>
                     <td className="td text-xs text-muted">
                       {new Date(v.createdAt).toLocaleDateString()}

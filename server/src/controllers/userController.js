@@ -4,6 +4,7 @@ const { hashApiKey } = require('../middleware/auth');
 const { providersStatus } = require('../services/verification');
 const { getRedis } = require('../config/redis');
 const { isMailConfigured } = require('../utils/mailer');
+const { getProviderCredits } = require('../services/providerCredits');
 
 exports.updateProfile = async (req, res) => {
   await User.updateOne({ _id: req.user._id }, { name: String(req.body.name).trim() }, { runValidators: true });
@@ -36,4 +37,9 @@ exports.systemStatus = async (req, res) => {
       mailboxChecksEnabled: providers.some((p) => p.configured),
     },
   });
+};
+
+exports.providerCredits = async (req, res) => {
+  const data = await getProviderCredits({ fresh: req.query.fresh === '1' });
+  res.json({ success: true, data });
 };

@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { analyticsService, accountService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { STATUS_HEX } from '../components/StatusBadge';
+import StatusBadge, { STATUS_HEX } from '../components/StatusBadge';
+import Patch, { JobStatus, Health } from '../components/Patch';
+import { useProviderCredits, LOW_CREDITS } from '../lib/useProviderCredits';
 
 const MIX = [
   { key: 'valid', label: 'Valid' },
@@ -12,13 +14,6 @@ const MIX = [
   { key: 'catch-all', label: 'Catch-all' },
   { key: 'unknown', label: 'Unknown' },
 ];
-
-const JOB_STATE = {
-  completed: { text: 'Done', cls: 'status-valid' },
-  processing: { text: 'Running', cls: 'status-catch-all' },
-  queued: { text: 'Queued', cls: 'status-unknown' },
-  failed: { text: 'Failed', cls: 'status-invalid' },
-};
 
 // Fill days with no activity so the chart always shows a full 14-day window.
 function lastDays(daily, days = 14) {
@@ -55,6 +50,9 @@ export default function Dashboard() {
     queryKey: ['system-status'],
     queryFn: () => accountService.systemStatus().then((r) => r.data.data),
   });
+
+  const { data: pc } = useProviderCredits();
+  const reoon = pc?.configured;
 
   const stats = statsData || { total: 0, avgConfidence: 0, byStatus: { valid: 0, invalid: 0, risky: 0, 'catch-all': 0, unknown: 0 } };
   const total = stats.total || 0;
@@ -111,11 +109,8 @@ export default function Dashboard() {
                 const n = stats.byStatus[m.key] || 0;
                 return (
                   <div key={m.key}>
-                    <dt className="flex items-center gap-2 text-xs text-white/60">
-                      <span className="w-2 h-2 rounded-full" style={{ background: STATUS_HEX[m.key] }} aria-hidden="true" />
-                      {m.label}
-                    </dt>
-                    <dd className="mt-1.5 text-xl font-semibold text-white">{n.toLocaleString()}</dd>
+                    <dt><StatusBadge status={m.key} /></dt>
+                    <dd className="mt-3 text-2xl font-semibold text-white">{n.toLocaleString()}</dd>
                     <dd className="text-xs text-white/50">{total ? `${Math.round((n / total) * 100)}%` : '0%'}</dd>
                   </div>
                 );
@@ -127,14 +122,15 @@ export default function Dashboard() {
 
       {/* Activity + credits */}
       <div className="grid lg:grid-cols-3 gap-6 mb-6">
-        <section className="card p-6 lg:col-span-2">
+        <section className="card p-6 lg:col-span-2 flex flex-col">
           <div className="flex items-baseline justify-between mb-5">
             <h2 className="font-semibold">Activity</h2>
             <span className="text-xs text-muted">Last 14 days</span>
           </div>
           {hasActivity ? (
             <>
-              <ResponsiveContainer width="100%" height={220}>
+              <div className="flex-1 min-h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={days} margin={{ top: 4, right: 0, bottom: 0, left: -24 }} barCategoryGap="28%">
                   <CartesianGrid vertical={false} stroke="#23312A" />
                   <XAxis dataKey="day" tick={{ fill: '#8B9B92', fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
@@ -145,10 +141,11 @@ export default function Dashboard() {
                   <Bar dataKey="other" name="Other" stackId="a" fill="#3B4C43" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="flex gap-5 mt-3 text-xs text-muted">
-                {[['Valid', STATUS_HEX.valid], ['Invalid', STATUS_HEX.invalid], ['Risky, catch-all and unknown', '#3B4C43']].map(([l, c]) => (
-                  <span key={l} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />{l}</span>
-                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Patch tone="ok" icon="check" size="sm">Valid</Patch>
+                <Patch tone="bad" icon="x" size="sm">Invalid</Patch>
+                <Patch tone="unk" size="sm">Risky, catch-all and unknown</Patch>
               </div>
             </>
           ) : (
@@ -157,17 +154,46 @@ export default function Dashboard() {
         </section>
 
         <section className="card p-6 flex flex-col">
-          <h2 className="font-semibold">Credits</h2>
-          <p className="text-[40px] leading-none font-semibold tracking-tight mt-4">{(user?.credits || 0).toLocaleString()}</p>
-          <p className="text-sm text-muted mt-2">1 credit per address. Results we can't confirm are refunded.</p>
-          <div className="mt-6 pt-5 border-t border-line space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold">{reoon ? 'Reoon credits' : 'Credits'}</h2>
+            {reoon && pc.ok && (pc.total < LOW_CREDITS
+              ? <Patch tone="warn" icon="alert" size="sm">Running low</Patch>
+              : <Patch tone="aqua" size="sm">Live</Patch>)}
+          </div>
+          {reoon ? (
+            pc.ok ? (
+              <>
+                <p className="text-[40px] leading-none font-semibold tracking-tight mt-4">{pc.total.toLocaleString()}</p>
+                <p className="text-sm text-muted mt-2">Left on your Reoon account. Each mailbox check uses one.</p>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="rounded-xl bg-surface2 px-3 py-2.5">
+                    <p className="text-xs text-muted">Instant</p>
+                    <p className="text-lg font-semibold">{(pc.instant ?? 0).toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-surface2 px-3 py-2.5">
+                    <p className="text-xs text-muted">Daily</p>
+                    <p className="text-lg font-semibold">{(pc.daily ?? 0).toLocaleString()}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-bad mt-4">Couldn&apos;t load your Reoon balance: {pc.error}</p>
+            )
+          ) : (
+            <>
+              <p className="text-[40px] leading-none font-semibold tracking-tight mt-4">{(user?.credits || 0).toLocaleString()}</p>
+              <p className="text-sm text-muted mt-2">1 credit per address. Results we can&apos;t confirm are refunded.</p>
+            </>
+          )}
+          <div className="mt-5 pt-5 border-t border-line space-y-3 text-sm">
+            {reoon && <Row label="Your MailGuard credits" value={(user?.credits || 0).toLocaleString()} />}
             <Row label="Addresses verified" value={(user?.totalVerified || 0).toLocaleString()} />
             <Row label="Average score" value={total ? `${stats.avgConfidence}%` : '—'} />
           </div>
           {system && (
             <div className="mt-auto pt-5 space-y-2 text-sm">
-              <Health ok={system.workerOnline} label="Bulk worker" />
-              <Health ok={system.mailboxChecksEnabled} label="Mailbox checker" />
+              <HealthRow label="Bulk worker"><Health ok={system.workerOnline} /></HealthRow>
+              <HealthRow label="Mailbox checker"><Health ok={system.mailboxChecksEnabled} on="Ready" off="Not set up" /></HealthRow>
             </div>
           )}
         </section>
@@ -205,7 +231,6 @@ export default function Dashboard() {
           {recentJobs.length ? (
             <ul className="divide-y divide-line -my-3">
               {recentJobs.map((j) => {
-                const st = JOB_STATE[j.status] || JOB_STATE.queued;
                 const pct = j.totalEmails ? Math.round(((j.results?.valid || 0) / j.totalEmails) * 100) : 0;
                 return (
                   <li key={j.jobId} className="flex items-center gap-4 py-3">
@@ -215,7 +240,7 @@ export default function Dashboard() {
                         {j.totalEmails.toLocaleString()} addresses{j.status === 'completed' ? `, ${pct}% valid` : ''}
                       </p>
                     </div>
-                    <span className={`badge ${st.cls}`}>{j.status === 'processing' ? `${j.progress}%` : st.text}</span>
+                    <JobStatus job={j} />
                   </li>
                 );
               })}
@@ -238,14 +263,12 @@ function Row({ label, value }) {
   );
 }
 
-function Health({ ok, label }) {
+
+function HealthRow({ label, children }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted">{label}</span>
-      <span className={`flex items-center gap-2 font-medium ${ok ? 'text-ok' : 'text-bad'}`}>
-        <span className={`w-2 h-2 rounded-full ${ok ? 'bg-ok' : 'bg-bad'}`} aria-hidden="true" />
-        {ok ? 'Online' : 'Offline'}
-      </span>
+      {children}
     </div>
   );
 }
