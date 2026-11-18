@@ -1,9 +1,11 @@
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
+const { env } = require('../config/env');
 
-/** Atomically take `n` credits; fails with 402 if the balance is too low. */
+/** Atomically take `n` credits; fails with 402 if the balance is too low.
+ *  No-op when USER_CREDITS_ENABLED=false. */
 async function charge(userId, n) {
-  if (n <= 0) return;
+  if (!env.credits.enabled || n <= 0) return;
   const r = await User.updateOne({ _id: userId, credits: { $gte: n } }, { $inc: { credits: -n } });
   if (!r.modifiedCount) {
     const user = await User.findById(userId).select('credits');
@@ -12,7 +14,8 @@ async function charge(userId, n) {
 }
 
 async function refund(userId, n) {
-  if (n > 0) await User.updateOne({ _id: userId }, { $inc: { credits: n } });
+  if (!env.credits.enabled || n <= 0) return;
+  await User.updateOne({ _id: userId }, { $inc: { credits: n } });
 }
 
-module.exports = { charge, refund };
+module.exports = { charge, refund, enabled: () => env.credits.enabled };

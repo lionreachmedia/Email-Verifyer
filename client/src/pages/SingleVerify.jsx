@@ -5,6 +5,7 @@ import { verifyService, errorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import Patch from '../components/Patch';
+import { useUserCreditsEnabled } from '../lib/useSystemStatus';
 import { useRefreshProviderCredits } from '../lib/useProviderCredits';
 import { reasonLabel, PROVIDER_NAMES } from '../lib/reasons';
 
@@ -24,6 +25,7 @@ const STATUS_HELP = {
 export default function SingleVerify() {
   const { refreshUser } = useAuth();
   const refreshProviderCredits = useRefreshProviderCredits();
+  const creditsOn = useUserCreditsEnabled();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -63,7 +65,7 @@ export default function SingleVerify() {
     <div className="page">
       <div className="mb-8">
         <h1 className="page-title">Verify one email</h1>
-        <p className="page-sub">Checks format, domain, mail server and the mailbox itself. Costs 1 credit, and nothing if we can't get an answer.</p>
+        <p className="page-sub">Checks format, domain, mail server and the mailbox itself.{creditsOn && ' Costs 1 credit, and nothing if we can\'t get an answer.'}</p>
       </div>
 
       <div className="card p-6 mb-6">

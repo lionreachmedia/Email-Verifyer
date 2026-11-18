@@ -56,7 +56,7 @@ export default function AppLayout() {
         </nav>
 
         <div className="p-4 space-y-3">
-          <CreditsWidget pc={pc} userCredits={user?.credits || 0} />
+          <CreditsWidget pc={pc} userCredits={user?.credits || 0} creditsOn={status?.userCreditsEnabled !== false} />
           <div className="flex items-center gap-3 px-1">
             <span className="w-8 h-8 rounded-full bg-side-3 text-white text-xs font-semibold flex items-center justify-center">{initials}</span>
             <div className="min-w-0 flex-1">
@@ -98,14 +98,14 @@ export default function AppLayout() {
   );
 }
 
-function CreditsWidget({ pc, userCredits }) {
+function CreditsWidget({ pc, userCredits, creditsOn }) {
   // Reoon not in use: fall back to the user's MailGuard credits.
   if (pc && !pc.configured) {
     return (
       <div className="rounded-xl bg-side-2 p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-white/55">Credits</span>
-          <span className="text-lg font-semibold text-white">{userCredits.toLocaleString()}</span>
+          <span className="text-lg font-semibold text-white">{creditsOn ? userCredits.toLocaleString() : 'Unlimited'}</span>
         </div>
       </div>
     );

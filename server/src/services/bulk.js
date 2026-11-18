@@ -66,7 +66,9 @@ async function recordResults(jobId, userId, results) {
   }
   await BulkJob.updateOne({ jobId }, { $inc: inc, $set: { status: 'processing' } });
   // Users are not charged for addresses we couldn't verify.
-  await User.updateOne({ _id: userId }, { $inc: { totalVerified: insertedIdx.length - unknown, credits: unknown } });
+  const userInc = { totalVerified: insertedIdx.length - unknown };
+  if (credits.enabled()) userInc.credits = unknown; // refund unverifiable addresses
+  await User.updateOne({ _id: userId }, { $inc: userInc });
   await finalizeIfDone(jobId);
 }
 

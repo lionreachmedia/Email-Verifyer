@@ -1,3 +1,4 @@
+const { env } = require('../config/env');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { hashApiKey } = require('../middleware/auth');
@@ -35,6 +36,7 @@ exports.systemStatus = async (req, res) => {
       mailConfigured: isMailConfigured(),
       providers,
       mailboxChecksEnabled: providers.some((p) => p.configured),
+      userCreditsEnabled: env.credits.enabled,
     },
   });
 };

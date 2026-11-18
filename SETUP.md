@@ -248,6 +248,10 @@ MAIL_FROM_NAME=MailGuard
 VERIFY_PROVIDERS=reoon
 REOON_API_KEY=<your key>
 REOON_MODE=power
+# Per-user credits off: only your Reoon balance limits checks.
+USER_CREDITS_ENABLED=false
+# Only these domains / emails can create accounts (keep this set when credits are off!)
+SIGNUP_ALLOWED=lionreach.com,webteamlionreach@gmail.com
 ```
 
 Make a new secret for the server (don't reuse your PC's):
@@ -417,6 +421,10 @@ MAIL_FROM_NAME=MailGuard
 VERIFY_PROVIDERS=reoon
 REOON_API_KEY=...
 REOON_MODE=power
+# Per-user credits off: only your Reoon balance limits checks.
+USER_CREDITS_ENABLED=false
+# Only these domains / emails can create accounts (keep this set when credits are off!)
+SIGNUP_ALLOWED=lionreach.com,webteamlionreach@gmail.com
 ```
 
 Deploy. Check that `https://api.yourdomain.com/health` shows `{"status":"ok"}`.

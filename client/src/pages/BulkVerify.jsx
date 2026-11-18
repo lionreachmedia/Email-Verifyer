@@ -5,6 +5,7 @@ import { verifyService, errorMessage, downloadBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { JobStatus } from '../components/Patch';
 import { useRefreshProviderCredits } from '../lib/useProviderCredits';
+import { useUserCreditsEnabled } from '../lib/useSystemStatus';
 
 const COUNTS = [
   ['valid', 'Valid', 'ok'],
@@ -17,6 +18,7 @@ const COUNTS = [
 export default function BulkVerify() {
   const { user, refreshUser } = useAuth();
   const refreshProviderCredits = useRefreshProviderCredits();
+  const creditsOn = useUserCreditsEnabled();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [job, setJob] = useState(null);
@@ -94,8 +96,8 @@ export default function BulkVerify() {
       <div className="mb-8">
         <h1 className="page-title">Verify a list</h1>
         <p className="page-sub">
-          Upload a CSV or TXT. Duplicates are removed and each unique email uses 1 MailGuard credit, refunded for any we can't verify.
-          You have <span className="font-semibold text-ink">{user?.credits?.toLocaleString() ?? 0}</span> MailGuard credits.
+          Upload a CSV or TXT. Duplicates are removed automatically.
+          {creditsOn && <> Each unique email uses 1 MailGuard credit, refunded for any we can&apos;t verify. You have <span className="font-semibold text-ink">{user?.credits?.toLocaleString() ?? 0}</span> MailGuard credits.</>}
         </p>
       </div>
 

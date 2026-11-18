@@ -28,7 +28,14 @@ const env = {
     fromName: process.env.MAIL_FROM_NAME || 'MailGuard',
   },
 
-  credits: { signup: int(process.env.SIGNUP_CREDITS, 100) },
+  credits: {
+    // false = no per-user limit; your provider balance (e.g. Reoon) is the only limit.
+    enabled: bool(process.env.USER_CREDITS_ENABLED, true),
+    signup: int(process.env.SIGNUP_CREDITS, 100),
+  },
+  // Who may create an account: comma-separated domains and/or full emails,
+  // e.g. "lionreach.com,someone@gmail.com". Empty = anyone.
+  signupAllowed: list(process.env.SIGNUP_ALLOWED),
 
   verify: {
     // Order matters: the first provider that gives a definitive answer wins.

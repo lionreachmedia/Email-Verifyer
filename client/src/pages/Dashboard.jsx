@@ -186,7 +186,7 @@ export default function Dashboard() {
             </>
           )}
           <div className="mt-5 pt-5 border-t border-line space-y-3 text-sm">
-            {reoon && <Row label="Your MailGuard credits" value={(user?.credits || 0).toLocaleString()} />}
+            {reoon && system?.userCreditsEnabled !== false && <Row label="Your MailGuard credits" value={(user?.credits || 0).toLocaleString()} />}
             <Row label="Addresses verified" value={(user?.totalVerified || 0).toLocaleString()} />
             <Row label="Average score" value={total ? `${stats.avgConfidence}%` : '—'} />
           </div>

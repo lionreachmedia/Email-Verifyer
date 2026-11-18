@@ -5,6 +5,7 @@ const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const { normalize } = require('../utils/email');
 const { sendOtp, sendPasswordReset } = require('../utils/mailer');
+const { isSignupAllowed } = require('../utils/signup');
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -40,6 +41,9 @@ async function findByEmail(email, select = '') {
 exports.register = async (req, res) => {
   const email = normalize(req.body.email);
   const { name, password } = req.body;
+  if (!isSignupAllowed(email, env.signupAllowed)) {
+    throw new AppError('Sign-ups are limited to approved email addresses. Ask your admin for access.', 403);
+  }
 
   let user = await User.findOne({ email }).select('+password');
   if (user && user.isVerified) throw new AppError('An account with this email already exists. Sign in instead.', 409);

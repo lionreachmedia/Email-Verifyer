@@ -6,12 +6,14 @@ import { useAuth } from '../context/AuthContext';
 import { PROVIDER_NAMES } from '../lib/reasons';
 import Patch from '../components/Patch';
 import { useProviderCredits } from '../lib/useProviderCredits';
+import { useUserCreditsEnabled } from '../lib/useSystemStatus';
 
 export default function Settings() {
   const { user, refreshUser } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [newKey, setNewKey] = useState(null);
   const { data: pc } = useProviderCredits();
+  const creditsOn = useUserCreditsEnabled();
   const { data: status, refetch } = useQuery({ queryKey: ['system-status'], queryFn: () => accountService.systemStatus().then((r) => r.data.data) });
 
   const saveName = async (e) => {
@@ -48,14 +50,14 @@ export default function Settings() {
         </form>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <dt className="text-muted">Email</dt><dd>{user?.email}</dd>
-          <dt className="text-muted">MailGuard credits</dt><dd>{user?.credits?.toLocaleString()}</dd>
+          {creditsOn && <><dt className="text-muted">MailGuard credits</dt><dd>{user?.credits?.toLocaleString()}</dd></>}
           <dt className="text-muted">Emails verified</dt><dd>{user?.totalVerified?.toLocaleString()}</dd>
         </dl>
       </section>
 
       <section className="card p-6">
         <h2 className="font-semibold mb-1">API key</h2>
-        <p className="text-sm text-muted mb-4">Verify emails from your own apps. Requests use the same credits as the dashboard.</p>
+        <p className="text-sm text-muted mb-4">Verify emails from your own apps. Requests are counted the same way as checks made in the dashboard.</p>
         {newKey ? (
           <div className="mb-4">
             <p className="text-xs text-warn mb-2">Copy this key now. It won't be shown again.</p>
